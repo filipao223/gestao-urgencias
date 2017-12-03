@@ -3,9 +3,7 @@
 #include <stdlib.h>
 
 #include "ficheiro.h"
-#include "structs.h"
-
-#define MAX_BUFFER 2000
+#include "global.h"
 
 Dados readFile(FILE* fileptr){
 

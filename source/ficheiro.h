@@ -1,7 +1,7 @@
 #ifndef FICHEIRO_H
 #define FICHEIRO_H
 
-#include "structs.h"
+#include "global.h"
 
 Dados readFile(FILE*);
 

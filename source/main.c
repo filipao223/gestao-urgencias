@@ -6,34 +6,45 @@
 #include <sys/shm.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/msg.h>
+#include <time.h>
+#include <stdint.h>
+#include <inttypes.h>
 
-#include "structs.h"
 #include "ficheiro.h"
 #include "triagem.h"
 #include "global.h"
 #include "doutor.h"
 #include "sinais.h"
+#include "log.h"
 
-#define MEM_SIZE 2048
-#define BUF_SIZE 2000
+void signal_handler(int signum){
+  close(globalVars.named_fd);
+  msgctl(globalVars.mq_id, IPC_RMID, 0);
+  sem_destroy(&globalVars.semLog);
+  shmdt(&(globalVars.dadosPartilhados));
+  shmctl(globalVars.shmid, IPC_RMID, NULL);
+  munmap(globalVars.log_ptr, getpagesize());
+  exit(0);
+}
 
-//struct sigaction sa;
-
-//void signal_handler(int signal);
-int k=0, maxNewDoctors = 7;
+int check_str_triage(char*);
 
 Globals globalVars;
+char buf[MAX_BUFFER];
+Paciente* paciente;
+int contPaciente=1;
 
 int main(int argc, char** argv){
   int cont=0;
   Dados dados;
   FILE *fileptr = fopen("registo.txt", "r");
 
-  //Signal handler
-  //sa.sa_handler = &signal_handler;
-  //sa.sa_flags = SA_RESTART;
-
-  //sigfillset(&sa.sa_mask); //Bloqueia outros sinais enquanto estiver a tratar um
+  signal(SIGINT, signal_handler);
 
   //Lê dados do ficheiro
   dados = readFile(fileptr);
@@ -51,6 +62,26 @@ int main(int argc, char** argv){
   globalVars.shmid = shmget(IPC_PRIVATE, MEM_SIZE, 0666 | IPC_CREAT);
   globalVars.dadosPartilhados = shmat(globalVars.shmid, NULL, 0);
 
+  //Cria mmf
+  globalVars.log_fd = open("log.txt", O_RDWR);
+  globalVars.log_ptr = mmap((caddr_t)0, getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, globalVars.log_fd, getpagesize());
+
+  //Cria e abre named pipe
+  if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
+    perror("Erro ao criar named pipe");
+    exit(0);
+  }
+  if((globalVars.named_fd = open(PIPE_NAME, O_RDONLY)) < 0){
+    perror("Erro ao abrir named pipe");
+    exit(0);
+  }
+
+  //Cria fila de mensagens
+  if((globalVars.mq_id = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
+    perror("Erro ao criar message queue");
+    exit(0);
+  }
+
   //Inicializa dados partilhados
   globalVars.numDadosPartilhados = 5;
   for(int i=0; i<globalVars.numDadosPartilhados; i++){
@@ -58,17 +89,85 @@ int main(int argc, char** argv){
   }
 
   //Inicializa semaphore
-  sem_init(&globalVars.semPacAten, 1, 1);
-  sem_init(&globalVars.semPacTri, 1, 1);
-  sem_init(&globalVars.semPacTempo, 1, 1);
+  sem_init(&globalVars.semLog, 1, 1);
+
+  while(1){
+    int temp;
+    char* tokens, *ptr;
+    int nread = read(globalVars.named_fd, buf, sizeof(buf));
+    buf[nread-1] = '\0'; //\n
+    printf("Recebeu: %s\n", buf);
+
+    //Verifica se o formato é num num num num
+    if(buf[0] >= '0' && buf[0] <= '9'){
+      //Varios pacientes, faz um for com o primeiro token
+      tokens = strtok(buf, " ");
+      sscanf(tokens, "%d", &temp);
+      for(int i=0; i<temp; i++){
+        char* tokens = strtok(buf, " ");
+        tokens = strtok(NULL, " ");
+        while(tokens!=NULL){
+          //Trata os dados do paciente
+          paciente = malloc(sizeof(Paciente));
+          sprintf(paciente->nome, "%d", contPaciente);
+          paciente->arrival_time = time(NULL);
+          tokens = strtok(NULL, " ");
+          paciente->triage_time = strtoimax(tokens, &ptr, 10);
+          tokens = strtok(NULL, " ");
+          paciente->atend_time = strtoimax(tokens, &ptr, 10);
+          tokens = strtok(NULL, " ");
+          paciente->prioridade = strtoimax(tokens, &ptr, 10);
+          contPaciente++;
+          //Envia para a message queue
+          msgsnd(globalVars.mq_id, paciente, sizeof(Paciente)-sizeof(long), 0);
+        }
+      }
+    }
+
+    //Não é do formato num num num num
+    else if((buf[0] >= 'A' && buf[0] <= 'z') && (check_str_triage(buf) != 1)){
+      //È do formato nome num num num
+      tokens = strtok(buf, " ");
+      paciente = malloc(sizeof(Paciente));
+      strcpy(paciente->nome, tokens);
+      paciente->arrival_time = time(NULL);
+      tokens = strtok(NULL, " ");
+      paciente->triage_time = strtoimax(tokens, &ptr, 10);
+      tokens = strtok(NULL, " ");
+      paciente->atend_time = strtoimax(tokens, &ptr, 10);
+      tokens = strtok(NULL, " ");
+      paciente->prioridade = strtoimax(tokens, &ptr, 10);
+      contPaciente++;
+      //Envia para a message queue
+      msgsnd(globalVars.mq_id, paciente, sizeof(Paciente)-sizeof(long), 0);
+    }
+
+    //Não é do formato nome num num num
+    else if(check_str_triage(buf)){
+      //É do formato TRIAGE=??
+      tokens = strtok(buf, "="); strtok(NULL, "=");
+      int newTriage = strtoimax(tokens, &ptr, 10);
+      printf("New triage = %d\n", newTriage);
+    }
+
+    //É um formato desconhecido
+    else{
+      printf("Formato desconhecido!\n");
+    }
+
+    globalVars.named_fd = open(PIPE_NAME, O_RDONLY);
+  }
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
     if(pthread_create(&threads[i], NULL, createTriage, &ids[i]) != 0)
       printf("Erro ao criar thread!\n");
+    /*char message[MAX_LOG_MESSAGE];
+    sprintf(message, "Thread %d criada\n", i);
+    write_to_log(message);*/
   }
 
-  sleep(5);
+  sleep(3);
   //Trata os dados relativos a tempos de Espera
 
   //Cria os processos doctor iniciais
@@ -79,80 +178,23 @@ int main(int argc, char** argv){
     }
   }
 
-  while(1){
-
-    //Verifica SIGINT
-    //if(sigaction(SIGINT, &sa, NULL) == -1) printf("Erro ao receber sinal.\n");
-
-    //Quando um processo acabar cria outro
-    wait(NULL);
-    if(fork() == 0){
-      trataPaciente();
-      exit(0);
-    }
-
-    cont++;
-
-    //Para acabar o programa antes de implementar signal handler
-    if(cont==maxNewDoctors) break;
-  }
-
-  //Espera que todas as threads acabem
-  for(int i=0; i<globalVars.TRIAGE; i++){
-    pthread_join(threads[i], NULL);
-  }
-
-  //Espera que todos os processos acabem
-  for(int i=0; i<globalVars.DOCTORS+5; i++){
-    wait(NULL);
-  }
-
   //Calcula media de tempo triado
-  float media = globalVars.dadosPartilhados[2]/(float)globalVars.dadosPartilhados[0];
-
-  printf("Numero total de pacientes triados: %d\n", globalVars.dadosPartilhados[0]);
-  printf("Numero total de pacientes atendidos: %d\n", globalVars.dadosPartilhados[1]);
-  printf("Media de tempo a ser triado: %.1fs\n", media);
 
   //Limpa recursos
-  sem_destroy(&globalVars.semPacTri);
-  sem_destroy(&globalVars.semPacAten);
-  sem_destroy(&globalVars.semPacTempo);
+  sem_destroy(&globalVars.semLog);
   shmdt(&(globalVars.dadosPartilhados));
   shmctl(globalVars.shmid, IPC_RMID, NULL);
+  munmap(globalVars.log_ptr, getpagesize());
 
   return 1;
 }
 
-/*void signal_handler(int signal){
-
-  fileno(stdout);
-  sem_t* mutex;
-  int* dadosPartilhados;
-  int DOCTORS, shmid;
-
-  if(signal != SIGINT){
-    char *buf = "Sinal errado!";
-    write(STDOUT_FILENO, buf, BUF_SIZE);
-  }
-  else{
-    char *buf = "SIGINT recebido!";
-    write(STDOUT_FILENO, buf, BUF_SIZE);
-
-    //Espera que todos os processos acabem
-    for(int i=0; i<DOCTORS+10; i++){
-      wait(NULL);
-    }
-
-    //Apresenta no ecra informaçao partilhada
-    //sprintf(buf, "Numero total de pacientes atendidos: %d\n", *dadosPartilhados+1);
-    //write(STDOUT_FILENO, buf, BUF_SIZE);
-
-    //Limpa recursos
-    sem_destroy(mutex);
-    shmdt(&dadosPartilhados);
-    shmctl(shmid, IPC_RMID, NULL);
-
-    exit(0);
-  }
-}*/
+int check_str_triage(char* str){
+  return
+    str[0] == 'T' &&
+    str[1] == 'R' &&
+    str[2] == 'I' &&
+    str[3] == 'A' &&
+    str[4] == 'G' &&
+    str[5] == 'E';
+}
