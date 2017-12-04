@@ -23,15 +23,20 @@
 //Struct das variavies globais
 typedef struct{
   //Constantes iniciais
-  int TRIAGE, DOCTORS, SHIFT_LENGTH, MQ_MAX;
+  unsigned long MQ_MAX;
+  int TRIAGE, DOCTORS, SHIFT_LENGTH;
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
   int* dadosPartilhados;
   char* log_ptr;
   //Descriptores de ficheiro
   int log_fd, named_fd;
-  //Semaforos, mutexes
-  sem_t semLog;
+  //Semaforos, mutexes, variaveis condiçao
+  sem_t semLog, semMQ;
+  pthread_cond_t cond_var_doctor;
+  pthread_mutex_t mutex_doctor;
+  //Outros
+  
 }Globals;
 
 extern Globals globalVars;

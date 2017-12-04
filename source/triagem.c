@@ -15,6 +15,7 @@ Globals globalVars;
 
 void* createTriage(void* t){
   Paciente paciente;
+
   while(1){
     msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0);
     printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);

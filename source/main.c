@@ -22,16 +22,6 @@
 #include "sinais.h"
 #include "log.h"
 
-void signal_handler(int signum){
-  close(globalVars.named_fd);
-  msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
-  sem_destroy(&globalVars.semLog);
-  shmdt(&(globalVars.dadosPartilhados));
-  shmctl(globalVars.shmid, IPC_RMID, NULL);
-  munmap(globalVars.log_ptr, getpagesize());
-  exit(0);
-}
-
 int check_str_triage(char*);
 
 Globals globalVars;
@@ -39,11 +29,10 @@ char buf[MAX_BUFFER];
 int contPaciente=1;
 
 int main(int argc, char** argv){
-  int cont=0;
   Dados dados;
   FILE *fileptr = fopen("registo.txt", "r");
 
-  signal(SIGINT, signal_handler);
+  signal(SIGINT, cleanup);
 
   //Lê dados do ficheiro
   dados = readFile(fileptr);
@@ -94,9 +83,15 @@ int main(int argc, char** argv){
 
   //Inicializa semaphore
   sem_init(&globalVars.semLog, 1, 1);
+  sem_init(&globalVars.semMQ, 1, 1);
+
+  //Inicializa variaveis de condiçao e mutexes
+  pthread_mutex_init(&globalVars.mutex_doctor, NULL);
+  pthread_cond_init(&globalVars.cond_var_doctor, NULL);
 
   //Cria a thread que vai criar processos doutor
   pthread_create(&thread_doctors, NULL, createDoctors, 0);
+  sleep(1);
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
