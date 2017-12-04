@@ -24,7 +24,7 @@
 
 void signal_handler(int signum){
   close(globalVars.named_fd);
-  msgctl(globalVars.mq_id, IPC_RMID, 0);
+  msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
   sem_destroy(&globalVars.semLog);
   shmdt(&(globalVars.dadosPartilhados));
   shmctl(globalVars.shmid, IPC_RMID, NULL);
@@ -32,11 +32,12 @@ void signal_handler(int signum){
   exit(0);
 }
 
+pthread_t thread_doctors, thread_triage[TRIAGE];
+
 int check_str_triage(char*);
 
 Globals globalVars;
 char buf[MAX_BUFFER];
-Paciente* paciente;
 int contPaciente=1;
 
 int main(int argc, char** argv){
@@ -76,8 +77,13 @@ int main(int argc, char** argv){
     exit(0);
   }
 
-  //Cria fila de mensagens
-  if((globalVars.mq_id = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
+  //Cria as filas de mensagens
+  if((globalVars.mq_id_thread = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
+    perror("Erro ao criar message queue");
+    exit(0);
+  }
+
+  if((globalVars.mq_id_doctor = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
     perror("Erro ao criar message queue");
     exit(0);
   }
@@ -91,7 +97,19 @@ int main(int argc, char** argv){
   //Inicializa semaphore
   sem_init(&globalVars.semLog, 1, 1);
 
+  //Cria as threads de triagem
+  for(int i=0; i<globalVars.TRIAGE; i++){
+    if(pthread_create(&threads[i], NULL, createTriage, &ids[i]) != 0)
+      printf("Erro ao criar thread!\n");
+    /*char message[MAX_LOG_MESSAGE];
+    sprintf(message, "Thread %d criada\n", i);
+    write_to_log(message);*/
+  }
+
+  //Recebe os pacientes pelo named pipe
   while(1){
+    Paciente paciente;
+    paciente.mtype = MTYPE;
     int temp;
     char* tokens, *ptr;
     int nread = read(globalVars.named_fd, buf, sizeof(buf));
@@ -108,18 +126,17 @@ int main(int argc, char** argv){
         tokens = strtok(NULL, " ");
         while(tokens!=NULL){
           //Trata os dados do paciente
-          paciente = malloc(sizeof(Paciente));
-          sprintf(paciente->nome, "%d", contPaciente);
-          paciente->arrival_time = time(NULL);
+          sprintf(paciente.nome, "%d", contPaciente);
+          paciente.arrival_time = time(NULL);
           tokens = strtok(NULL, " ");
-          paciente->triage_time = strtoimax(tokens, &ptr, 10);
+          paciente.triage_time = strtoimax(tokens, &ptr, 10);
           tokens = strtok(NULL, " ");
-          paciente->atend_time = strtoimax(tokens, &ptr, 10);
+          paciente.atend_time = strtoimax(tokens, &ptr, 10);
           tokens = strtok(NULL, " ");
-          paciente->prioridade = strtoimax(tokens, &ptr, 10);
+          paciente.prioridade = strtoimax(tokens, &ptr, 10);
           contPaciente++;
           //Envia para a message queue
-          msgsnd(globalVars.mq_id, paciente, sizeof(Paciente)-sizeof(long), 0);
+          msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
         }
       }
     }
@@ -128,18 +145,17 @@ int main(int argc, char** argv){
     else if((buf[0] >= 'A' && buf[0] <= 'z') && (check_str_triage(buf) != 1)){
       //È do formato nome num num num
       tokens = strtok(buf, " ");
-      paciente = malloc(sizeof(Paciente));
-      strcpy(paciente->nome, tokens);
-      paciente->arrival_time = time(NULL);
+      strcpy(paciente.nome, tokens);
+      paciente.arrival_time = time(NULL);
       tokens = strtok(NULL, " ");
-      paciente->triage_time = strtoimax(tokens, &ptr, 10);
+      paciente.triage_time = strtoimax(tokens, &ptr, 10);
       tokens = strtok(NULL, " ");
-      paciente->atend_time = strtoimax(tokens, &ptr, 10);
+      paciente.atend_time = strtoimax(tokens, &ptr, 10);
       tokens = strtok(NULL, " ");
-      paciente->prioridade = strtoimax(tokens, &ptr, 10);
+      paciente.prioridade = strtoimax(tokens, &ptr, 10);
       contPaciente++;
       //Envia para a message queue
-      msgsnd(globalVars.mq_id, paciente, sizeof(Paciente)-sizeof(long), 0);
+      msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
     }
 
     //Não é do formato nome num num num
@@ -156,15 +172,6 @@ int main(int argc, char** argv){
     }
 
     globalVars.named_fd = open(PIPE_NAME, O_RDONLY);
-  }
-
-  //Cria as threads de triagem
-  for(int i=0; i<globalVars.TRIAGE; i++){
-    if(pthread_create(&threads[i], NULL, createTriage, &ids[i]) != 0)
-      printf("Erro ao criar thread!\n");
-    /*char message[MAX_LOG_MESSAGE];
-    sprintf(message, "Thread %d criada\n", i);
-    write_to_log(message);*/
   }
 
   sleep(3);

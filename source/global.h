@@ -18,13 +18,14 @@
 #define MAX_BUFFER 2000
 #define PIPE_NAME "named_pipe"
 #define MAX_NOME_PACIENTE 256
+#define MTYPE 1
 
 //Struct das variavies globais
 typedef struct{
   //Constantes iniciais
   int TRIAGE, DOCTORS, SHIFT_LENGTH, MQ_MAX;
   //ID's threads, processos, memorias
-  int shmid, mq_id, numDadosPartilhados;
+  int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
   int* dadosPartilhados;
   char* log_ptr;
   //Descriptores de ficheiro
