@@ -95,6 +95,9 @@ int main(int argc, char** argv){
   //Inicializa semaphore
   sem_init(&globalVars.semLog, 1, 1);
 
+  //Cria a thread que vai criar processos doutor
+  pthread_create(&thread_doctors, NULL, createDoctors, 0);
+
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
     if(pthread_create(&thread_triage[i], NULL, createTriage, &ids[i]) != 0)
@@ -173,14 +176,6 @@ int main(int argc, char** argv){
 
   sleep(3);
   //Trata os dados relativos a tempos de Espera
-
-  //Cria os processos doctor iniciais
-  for(int i=0; i<globalVars.DOCTORS; i++){
-    if(fork() == 0){
-      trataPaciente();
-      exit(0);
-    }
-  }
 
   //Calcula media de tempo triado
 

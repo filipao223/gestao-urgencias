@@ -3,6 +3,7 @@
 
 #include <semaphore.h>
 
+void* createDoctors();
 void trataPaciente();
 
 #endif //DOUTOR_H
