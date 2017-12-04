@@ -32,8 +32,6 @@ void signal_handler(int signum){
   exit(0);
 }
 
-pthread_t thread_doctors, thread_triage[TRIAGE];
-
 int check_str_triage(char*);
 
 Globals globalVars;
@@ -54,7 +52,7 @@ int main(int argc, char** argv){
   globalVars.SHIFT_LENGTH=dados.shift_length;
   globalVars.MQ_MAX=dados.mq_max;
 
-  pthread_t threads[globalVars.TRIAGE];
+  pthread_t thread_doctors, thread_triage[globalVars.TRIAGE];
   long ids[globalVars.TRIAGE];
 
   srand(time(NULL));
@@ -99,7 +97,7 @@ int main(int argc, char** argv){
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
-    if(pthread_create(&threads[i], NULL, createTriage, &ids[i]) != 0)
+    if(pthread_create(&thread_triage[i], NULL, createTriage, &ids[i]) != 0)
       printf("Erro ao criar thread!\n");
     /*char message[MAX_LOG_MESSAGE];
     sprintf(message, "Thread %d criada\n", i);
@@ -111,7 +109,7 @@ int main(int argc, char** argv){
     Paciente paciente;
     paciente.mtype = MTYPE;
     int temp;
-    char* tokens, *ptr;
+    char* tokens, *ptr, *bufTemp;
     int nread = read(globalVars.named_fd, buf, sizeof(buf));
     buf[nread-1] = '\0'; //\n
     printf("Recebeu: %s\n", buf);
@@ -119,25 +117,24 @@ int main(int argc, char** argv){
     //Verifica se o formato é num num num num
     if(buf[0] >= '0' && buf[0] <= '9'){
       //Varios pacientes, faz um for com o primeiro token
-      tokens = strtok(buf, " ");
+      bufTemp = strdup(buf);
+      tokens = strtok(bufTemp, " ");
       sscanf(tokens, "%d", &temp);
       for(int i=0; i<temp; i++){
-        char* tokens = strtok(buf, " ");
+        bufTemp = strdup(buf);
+        tokens = strtok(bufTemp, " ");
+        //Trata os dados do paciente
+        sprintf(paciente.nome, "%d", contPaciente);
+        paciente.arrival_time = time(NULL);
         tokens = strtok(NULL, " ");
-        while(tokens!=NULL){
-          //Trata os dados do paciente
-          sprintf(paciente.nome, "%d", contPaciente);
-          paciente.arrival_time = time(NULL);
-          tokens = strtok(NULL, " ");
-          paciente.triage_time = strtoimax(tokens, &ptr, 10);
-          tokens = strtok(NULL, " ");
-          paciente.atend_time = strtoimax(tokens, &ptr, 10);
-          tokens = strtok(NULL, " ");
-          paciente.prioridade = strtoimax(tokens, &ptr, 10);
-          contPaciente++;
-          //Envia para a message queue
-          msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
-        }
+        paciente.triage_time = strtoimax(tokens, &ptr, 10);
+        tokens = strtok(NULL, " ");
+        paciente.atend_time = strtoimax(tokens, &ptr, 10);
+        tokens = strtok(NULL, " ");
+        paciente.prioridade = strtoimax(tokens, &ptr, 10);
+        contPaciente++;
+        //Envia para a message queue
+        msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
       }
     }
 
