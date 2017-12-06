@@ -89,13 +89,15 @@ int main(int argc, char** argv){
   pthread_mutex_init(&globalVars.mutex_doctor, NULL);
   pthread_cond_init(&globalVars.cond_var_doctor, NULL);
 
+  globalVars.checkRequestedDoctor = 0;
+
   //Cria a thread que vai criar processos doutor
   pthread_create(&thread_doctors, NULL, createDoctors, 0);
   sleep(1);
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
-    if(pthread_create(&thread_triage[i], NULL, createTriage, &ids[i]) != 0)
+    if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0)
       printf("Erro ao criar thread!\n");
     /*char message[MAX_LOG_MESSAGE];
     sprintf(message, "Thread %d criada\n", i);

@@ -13,7 +13,7 @@
 
 Globals globalVars;
 
-void* createTriage(void* t){
+void* triaPaciente(void* t){
   Paciente paciente;
 
   while(1){

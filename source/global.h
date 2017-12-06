@@ -36,7 +36,7 @@ typedef struct{
   pthread_cond_t cond_var_doctor;
   pthread_mutex_t mutex_doctor;
   //Outros
-  
+  int checkRequestedDoctor;
 }Globals;
 
 extern Globals globalVars;
