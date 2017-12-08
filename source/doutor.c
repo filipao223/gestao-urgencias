@@ -108,9 +108,19 @@ void trataPaciente(){
 
       //Espera tempo de atendimento
       usleep(paciente.atend_time*1000); //Converte para milisegundos
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("");
+      }
+      
+      (*globalVars.n_pacientes_atendidos)++;
       end_atender = time(NULL);
       tempo_atendimento += end_atender - start_atender;
       n_pacientes_tratados +=1;
+
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("");
+      }
       printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
     }
     end_time = time(NULL); //Compara com o num de segundos quando criado

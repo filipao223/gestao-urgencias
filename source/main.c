@@ -90,15 +90,15 @@ int main(int argc, char** argv){
   }
 
   //Inicializa semaphore
-  if((globalVars.semLog = sem_open("SemLog", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+  if((globalVars.semLog = sem_open("SemLog", O_CREAT, 0600, 1)) == SEM_FAILED){
     perror("Erro ao Inicializar SemLog\n");
     cleanup(SIGINT);
   }
-  if((globalVars.semMQ = sem_open("SemMQ", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+  if((globalVars.semMQ = sem_open("SemMQ", O_CREAT, 0600, 1)) == SEM_FAILED){
     perror("Erro ao inicializar SemMQ\n");
     cleanup(SIGINT);
   }
-  if((globalVars.semSHM = sem_open("SemSHM", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+  if((globalVars.semSHM = sem_open("SemSHM", O_CREAT, 0600, 1)) == SEM_FAILED){
     perror("Erro ao inicializar SemSHM\n");
     cleanup(SIGINT);
   }

@@ -31,7 +31,15 @@ void* triaPaciente(void* t){
       }
       else{
         printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
+        //estatisticas
+        if(sem_wait(globalVars.semSHM) != 0){
+          perror("");
+        }
+        (*globalVars.n_pacientes_triados)++;
 
+        if(sem_post(globalVars.semSHM) != 0){
+          perror("");
+        }
       }
     }
   }

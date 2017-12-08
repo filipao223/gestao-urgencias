@@ -30,6 +30,12 @@ void cleanup(int signum){
 void show_stats(int signum){
   printf("SIGUSR1 received! Showing stats\n");
 
+  if(sem_wait(globalVars.semSHM) != 0){
+    perror("");
+  }
   printf("Numero de pacientes atendidos: %d\n", *(globalVars.n_pacientes_atendidos));
   printf("Numero de pacientes triados: %d\n", *(globalVars.n_pacientes_triados));
+  if(sem_post(globalVars.semSHM) != 0){
+    perror("");
+  }
 }
