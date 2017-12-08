@@ -22,6 +22,7 @@ void* triaPaciente(void* t){
     }
     else{
       printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
+      fflush(stdout);
       //Escreve as estatisticas em memoria partilhada (por fazer)
       //Espera pelo tempo de triagem
       usleep(paciente.triage_time);
@@ -31,6 +32,7 @@ void* triaPaciente(void* t){
       }
       else{
         printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
+        fflush(stdout);
         //estatisticas
         if(sem_wait(globalVars.semSHM) != 0){
           perror("");

@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
+#define LOG_SIZE 256
 #define MEM_SIZE 20
 #define MAX_BUFFER 2000
 #define PIPE_NAME "named_pipe"
@@ -29,7 +30,7 @@ typedef struct{
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
   int* dadosPartilhados;
   int *n_pacientes_triados, *n_pacientes_atendidos;
-  char* log_ptr;
+  char* log_ptr; int ptr_pos;
   //Descriptores de ficheiro
   int log_fd, named_fd;
   //Semaforos, mutexes, variaveis condiçao

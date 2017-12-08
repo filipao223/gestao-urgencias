@@ -59,8 +59,13 @@ int main(int argc, char** argv){
   globalVars.n_pacientes_atendidos = globalVars.dadosPartilhados+1;
 
   //Cria mmf
-  globalVars.log_fd = open("log.txt", O_RDWR);
-  globalVars.log_ptr = mmap((caddr_t)0, getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, globalVars.log_fd, getpagesize());
+  globalVars.log_fd = open("log.txt", O_RDWR|O_CREAT, 0600);
+
+  lseek(globalVars.log_fd, LOG_SIZE-1, SEEK_SET);
+  write(globalVars.log_fd, "", 1);
+
+  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, globalVars.log_fd, 0);
+  globalVars.ptr_pos = 0;
 
   //Cria e abre named pipe
   if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
@@ -117,9 +122,9 @@ int main(int argc, char** argv){
   for(int i=0; i<globalVars.TRIAGE; i++){
     if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0)
       printf("Erro ao criar thread!\n");
-    /*char message[MAX_LOG_MESSAGE];
+    char message[MAX_LOG_MESSAGE];
     sprintf(message, "Thread %d criada\n", i);
-    write_to_log(message);*/
+    write_to_log(message);
   }
 
   //Recebe os pacientes pelo named pipe

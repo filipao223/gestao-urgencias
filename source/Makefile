@@ -17,4 +17,4 @@ log.o: log.c global.h
 sinais.o: sinais.c global.h
 	$(CC) sinais.c $(CFLAGS)
 clean:
-	rm *.o final named_pipe
+	rm *.o final named_pipe log.txt
