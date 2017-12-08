@@ -15,14 +15,32 @@ Globals globalVars;
 
 void* triaPaciente(void* t){
   Paciente paciente;
-
   while(1){
-    msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0);
-    printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
-    //Escreve as estatisticas em memoria partilhada (por fazer)
-    //Espera pelo tempo de triagem
-    usleep(paciente.triage_time);
-    msgsnd(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), 0);
-    printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
+
+    if(msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
+      perror("");
+    }
+    else{
+      printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
+      //Escreve as estatisticas em memoria partilhada (por fazer)
+      //Espera pelo tempo de triagem
+      usleep(paciente.triage_time);
+
+      if(msgsnd(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), 0) < 0){
+        perror("");
+      }
+      else{
+        printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
+        //estatisticas
+        if(sem_wait(globalVars.semSHM) != 0){
+          perror("");
+        }
+        (*globalVars.n_pacientes_triados)++;
+
+        if(sem_post(globalVars.semSHM) != 0){
+          perror("");
+        }
+      }
+    }
   }
 }

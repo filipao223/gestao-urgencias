@@ -18,10 +18,24 @@ void cleanup(int signum){
   close(globalVars.named_fd);
   msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
   msgctl(globalVars.mq_id_doctor, IPC_RMID, 0);
-  sem_destroy(&globalVars.semLog);
-  sem_destroy(&globalVars.semMQ);
+  sem_close(globalVars.semLog);
+  sem_close(globalVars.semMQ);
+  sem_close(globalVars.semSHM);
   shmdt(&globalVars.dadosPartilhados);
   shmctl(globalVars.shmid, IPC_RMID, NULL);
   munmap(globalVars.log_ptr, getpagesize());
   exit(0);
+}
+
+void show_stats(int signum){
+  printf("SIGUSR1 received! Showing stats\n");
+
+  if(sem_wait(globalVars.semSHM) != 0){
+    perror("");
+  }
+  printf("Numero de pacientes atendidos: %d\n", *(globalVars.n_pacientes_atendidos));
+  printf("Numero de pacientes triados: %d\n", *(globalVars.n_pacientes_triados));
+  if(sem_post(globalVars.semSHM) != 0){
+    perror("");
+  }
 }

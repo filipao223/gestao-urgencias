@@ -28,11 +28,12 @@ typedef struct{
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
   int* dadosPartilhados;
+  int *n_pacientes_triados, *n_pacientes_atendidos;
   char* log_ptr;
   //Descriptores de ficheiro
   int log_fd, named_fd;
   //Semaforos, mutexes, variaveis condiçao
-  sem_t semLog, semMQ;
+  sem_t* semLog, *semMQ, *semSHM;
   pthread_cond_t cond_var_doctor;
   pthread_mutex_t mutex_doctor;
   //Outros

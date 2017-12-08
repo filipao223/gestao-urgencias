@@ -23,6 +23,9 @@
 #include "log.h"
 
 int check_str_triage(char*);
+int check_sigusr1(char*);
+
+void show_stats(int signum);
 
 Globals globalVars;
 char buf[MAX_BUFFER];
@@ -33,6 +36,7 @@ int main(int argc, char** argv){
   FILE *fileptr = fopen("registo.txt", "r");
 
   signal(SIGINT, cleanup);
+  signal(SIGUSR1, show_stats);
 
   //Lê dados do ficheiro
   dados = readFile(fileptr);
@@ -49,6 +53,10 @@ int main(int argc, char** argv){
   //Cria as zonas de memoria partilhada
   globalVars.shmid = shmget(IPC_PRIVATE, MEM_SIZE, 0666 | IPC_CREAT);
   globalVars.dadosPartilhados = shmat(globalVars.shmid, NULL, 0);
+
+  //Renomeia as zonas de memoria partilhada
+  globalVars.n_pacientes_triados = globalVars.dadosPartilhados;
+  globalVars.n_pacientes_atendidos = globalVars.dadosPartilhados+1;
 
   //Cria mmf
   globalVars.log_fd = open("log.txt", O_RDWR);
@@ -82,8 +90,18 @@ int main(int argc, char** argv){
   }
 
   //Inicializa semaphore
-  sem_init(&globalVars.semLog, 1, 1);
-  sem_init(&globalVars.semMQ, 1, 1);
+  if((globalVars.semLog = sem_open("SemLog", O_CREAT, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao Inicializar SemLog\n");
+    cleanup(SIGINT);
+  }
+  if((globalVars.semMQ = sem_open("SemMQ", O_CREAT, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao inicializar SemMQ\n");
+    cleanup(SIGINT);
+  }
+  if((globalVars.semSHM = sem_open("SemSHM", O_CREAT, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao inicializar SemSHM\n");
+    cleanup(SIGINT);
+  }
 
   //Inicializa variaveis de condiçao e mutexes
   pthread_mutex_init(&globalVars.mutex_doctor, NULL);
@@ -139,7 +157,7 @@ int main(int argc, char** argv){
     }
 
     //Não é do formato num num num num
-    else if((buf[0] >= 'A' && buf[0] <= 'z') && (check_str_triage(buf) != 1)){
+    else if((buf[0] >= 'A' && buf[0] <= 'z') && (check_str_triage(buf) != 1) && (check_sigusr1(buf) != 1)){
       //È do formato nome num num num
       tokens = strtok(buf, " ");
       strcpy(paciente.nome, tokens);
@@ -163,6 +181,10 @@ int main(int argc, char** argv){
       printf("New triage = %d\n", newTriage);
     }
 
+    else if(check_sigusr1(buf)){
+      //É do formato STATS, envia sinal SIGUSR1
+      kill(getpid(), SIGUSR1);
+    }
     //É um formato desconhecido
     else{
       printf("Formato desconhecido!\n");
@@ -177,7 +199,6 @@ int main(int argc, char** argv){
   //Calcula media de tempo triado
 
   //Limpa recursos
-  sem_destroy(&globalVars.semLog);
   shmdt(&(globalVars.dadosPartilhados));
   shmctl(globalVars.shmid, IPC_RMID, NULL);
   munmap(globalVars.log_ptr, getpagesize());
@@ -193,4 +214,13 @@ int check_str_triage(char* str){
     str[3] == 'A' &&
     str[4] == 'G' &&
     str[5] == 'E';
+}
+
+int check_sigusr1(char* str){
+  return
+    str[0] == 'S' &&
+    str[1] == 'T' &&
+    str[2] == 'A' &&
+    str[3] == 'T' &&
+    str[4] == 'S';
 }
