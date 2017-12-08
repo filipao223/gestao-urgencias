@@ -28,6 +28,7 @@ typedef struct{
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
   int* dadosPartilhados;
+  int *n_pacientes_triados, *n_pacientes_atendidos;
   char* log_ptr;
   //Descriptores de ficheiro
   int log_fd, named_fd;

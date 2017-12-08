@@ -25,3 +25,10 @@ void cleanup(int signum){
   munmap(globalVars.log_ptr, getpagesize());
   exit(0);
 }
+
+void show_stats(int signum){
+  printf("SIGUSR1 received! Showing stats\n");
+
+  printf("Numero de pacientes atendidos: %d\n", *(globalVars.n_pacientes_atendidos));
+  printf("Numero de pacientes triados: %d\n", *(globalVars.n_pacientes_triados));
+}
