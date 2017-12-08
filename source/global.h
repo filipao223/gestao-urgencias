@@ -33,7 +33,7 @@ typedef struct{
   //Descriptores de ficheiro
   int log_fd, named_fd;
   //Semaforos, mutexes, variaveis condiçao
-  sem_t semLog, semMQ;
+  sem_t* semLog, *semMQ, *semSHM;
   pthread_cond_t cond_var_doctor;
   pthread_mutex_t mutex_doctor;
   //Outros

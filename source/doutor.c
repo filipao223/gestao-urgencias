@@ -65,7 +65,7 @@ void trataPaciente(){
 
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
-    if(sem_wait(&globalVars.semMQ) != 0){
+    if(sem_wait(globalVars.semMQ) != 0){
       perror("Erro ao decrementar semaforo\n");
     }
 
@@ -93,7 +93,7 @@ void trataPaciente(){
     }
     //Já foi pedido, não pode ser pedido outra vez
 
-    if(sem_post(&globalVars.semMQ) !=0 ){
+    if(sem_post(globalVars.semMQ) !=0 ){
       perror("Erro ao incrementar semaforo\n");
     }
 
@@ -167,7 +167,7 @@ void trataPaciente_tempDoctor(){
 
   while(1){
     //Verifica o estado da message queue
-    if(sem_wait(&globalVars.semMQ)!=0){
+    if(sem_wait(globalVars.semMQ)!=0){
       perror("");
     }
 
@@ -176,7 +176,7 @@ void trataPaciente_tempDoctor(){
       //Voltou a menos de 80% de lotação, acaba este processo nesta iteraçao
       check_exit = 1;
     }
-    if(sem_post(&globalVars.semMQ)!=0){
+    if(sem_post(globalVars.semMQ)!=0){
       perror("");
     }
 

@@ -90,8 +90,18 @@ int main(int argc, char** argv){
   }
 
   //Inicializa semaphore
-  sem_init(&globalVars.semLog, 1, 1);
-  sem_init(&globalVars.semMQ, 1, 1);
+  if((globalVars.semLog = sem_open("SemLog", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao Inicializar SemLog\n");
+    cleanup(SIGINT);
+  }
+  if((globalVars.semMQ = sem_open("SemMQ", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao inicializar SemMQ\n");
+    cleanup(SIGINT);
+  }
+  if((globalVars.semSHM = sem_open("SemSHM", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
+    perror("Erro ao inicializar SemSHM\n");
+    cleanup(SIGINT);
+  }
 
   //Inicializa variaveis de condiçao e mutexes
   pthread_mutex_init(&globalVars.mutex_doctor, NULL);
@@ -189,7 +199,6 @@ int main(int argc, char** argv){
   //Calcula media de tempo triado
 
   //Limpa recursos
-  sem_destroy(&globalVars.semLog);
   shmdt(&(globalVars.dadosPartilhados));
   shmctl(globalVars.shmid, IPC_RMID, NULL);
   munmap(globalVars.log_ptr, getpagesize());
