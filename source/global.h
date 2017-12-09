@@ -14,12 +14,13 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
-#define LOG_SIZE 4092
+#define LOG_SIZE 1024
 #define MEM_SIZE 40
 #define MAX_BUFFER 2000
-#define PIPE_NAME "named_pipe"
+#define PIPE_NAME "input_pipe"
 #define MAX_NOME_PACIENTE 256
 #define MTYPE 1
+#define DEBUG
 
 //Struct das variavies globais
 typedef struct{

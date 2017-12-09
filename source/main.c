@@ -40,7 +40,7 @@ int main(int argc, char** argv){
   signal(SIGINT, cleanup);
   signal(SIGUSR1, show_stats);
 
-  //Ignora os outros sinais
+  //Ignora os outros sinais, excepto SIGINT(2), SIGSEGV(11), e SIGUSR1(10)
   for(int i=1; i<31; i++){
     if((i!=2) && (i!=10) && (i!=11)){
       signal(i, ignore_signal);
@@ -60,8 +60,14 @@ int main(int argc, char** argv){
   srand(time(NULL));
 
   //Cria as zonas de memoria partilhada
-  globalVars.shmid = shmget(IPC_PRIVATE, MEM_SIZE, 0666 | IPC_CREAT);
-  globalVars.dadosPartilhados = shmat(globalVars.shmid, NULL, 0);
+  if((globalVars.shmid = shmget(IPC_PRIVATE, MEM_SIZE, 0666 | IPC_CREAT)) < 0){
+    perror("Erro ao criar segmento de memoria partilhada\n");
+    cleanup(2);
+  }
+  if((globalVars.dadosPartilhados = shmat(globalVars.shmid, NULL, 0)) < 0){
+    perror("Erro ao fazer attach da memoria partilhada\n");
+    cleanup(2);
+  }
 
   //Renomeia as zonas de memoria partilhada
   globalVars.n_pacientes_triados = globalVars.dadosPartilhados;
@@ -70,33 +76,33 @@ int main(int argc, char** argv){
   globalVars.total_before_atend = globalVars.dadosPartilhados+3;
 
   //Cria mmf
-  globalVars.log_fd = open("log.txt", O_RDWR|O_CREAT, 0600);
+  globalVars.log_fd = open("log.txt", O_WRONLY|O_CREAT, 0600);
 
   lseek(globalVars.log_fd, LOG_SIZE-1, SEEK_SET);
   write(globalVars.log_fd, "", 1);
 
-  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, globalVars.log_fd, 0);
+  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_WRITE, MAP_SHARED, globalVars.log_fd, 0);
   globalVars.ptr_pos = 0;
 
   //Cria e abre named pipe
   if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
     perror("Erro ao criar named pipe\n");
-    exit(0);
+    cleanup(2);
   }
   if((globalVars.named_fd = open(PIPE_NAME, O_RDONLY)) < 0){
     perror("Erro ao abrir named pipe\n");
-    exit(0);
+    cleanup(2);
   }
 
   //Cria as filas de mensagens
   if((globalVars.mq_id_thread = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
     perror("Erro ao criar message queue triage\n");
-    exit(0);
+    cleanup(2);
   }
 
   if((globalVars.mq_id_doctor = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
     perror("Erro ao criar message queue doctor\n");
-    exit(0);
+    cleanup(2);
   }
 
   //Inicializa dados partilhados
@@ -105,8 +111,12 @@ int main(int argc, char** argv){
     globalVars.dadosPartilhados[i] = 0;
   }
 
+  sem_unlink("SemLog");
+  sem_unlink("SemMQ");
+  sem_unlink("SemSHM");
+
   //Inicializa semaphore
-  if((globalVars.semLog = sem_open("SemLog", O_CREAT, 0600, 1)) == SEM_FAILED){
+  if((globalVars.semLog = sem_open("SemLog", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
     perror("Erro ao Inicializar SemLog\n");
     cleanup(SIGINT);
   }
@@ -131,11 +141,10 @@ int main(int argc, char** argv){
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
-    if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0)
-      printf("Erro ao criar thread!\n");
-    char message[MAX_LOG_MESSAGE];
-    sprintf(message, "Thread %d criada\n", i);
-    write_to_log(message);
+    if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
+    /*char message[MAX_LOG_MESSAGE];
+    sprintf(message, "Thread criada\n");
+    write_to_log(message);*/
   }
 
   //Recebe os pacientes pelo named pipe
@@ -150,6 +159,9 @@ int main(int argc, char** argv){
 
     //Verifica se o formato é num num num num
     if(buf[0] >= '0' && buf[0] <= '9'){
+      #ifdef DEBUG
+      printf("Entrou no if de num num num num\n");
+      #endif
       //Varios pacientes, faz um for com o primeiro token
       bufTemp = strdup(buf);
       tokens = strtok(bufTemp, " ");
@@ -180,6 +192,9 @@ int main(int argc, char** argv){
 
     //Não é do formato num num num num
     else if((buf[0] >= 'A' && buf[0] <= 'z') && (check_str_triage(buf) != 1) && (check_sigusr1(buf) != 1)){
+      #ifdef DEBUG
+      printf("Entrou no else if de nome num num num\n");
+      #endif
       //È do formato nome num num num
       tokens = strtok(buf, " ");
       strcpy(paciente.nome, tokens);
@@ -203,13 +218,26 @@ int main(int argc, char** argv){
 
     //Não é do formato nome num num num
     else if(check_str_triage(buf)){
+      #ifdef DEBUG
+      printf("Entrou no else if TRIAGE=xx\n");
+      #endif
       //É do formato TRIAGE=??
-      tokens = strtok(buf, "="); strtok(NULL, "=");
+      tokens = strtok(buf, "="); tokens = strtok(NULL, "=");
       int newTriage = strtoimax(tokens, &ptr, 10);
-      printf("New triage = %d\n", newTriage);
+      printf("NeTriage = %d", newTriage);
+      if(newTriage>globalVars.TRIAGE){
+        pthread_t new_thread_triage[globalVars.TRIAGE-newTriage];
+        printf("New triage = %d\n", newTriage);
+        for(int i=0; i<newTriage-globalVars.TRIAGE; i++){
+          if(pthread_create(&new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
+        }
+      }
     }
 
     else if(check_sigusr1(buf)){
+      #ifdef DEBUG
+      printf("Entrou no else if STATS\n");
+      #endif
       //É do formato STATS, envia sinal SIGUSR1
       kill(getpid(), SIGUSR1);
     }

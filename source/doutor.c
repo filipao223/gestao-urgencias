@@ -9,6 +9,7 @@
 #include "doutor.h"
 #include "global.h"
 #include "sinais.h"
+#include "log.h"
 
 Globals globalVars;
 
@@ -69,6 +70,10 @@ void trataPaciente(){
   time_t start_time = time(NULL), end_time = 0;
 
   printf("Doutor [%d] começou o seu turno.\n", getpid());
+  //Escreve no log
+  /*char message[MAX_LOG_MESSAGE];
+  sprintf(message, "Doutor [%d] começou o seu turno.\n",getpid());
+  write_to_log(message);*/
 
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
@@ -141,6 +146,9 @@ void trataPaciente(){
 
   }
   printf("Doutor [%d] acabou o seu turno\n", getpid());
+  //Escreve no log
+  /*sprintf(message, "Doutor [%d] acabou o seu turno.\n",getpid());
+  write_to_log(message);*/
 }
 
 void* createTempDoctor(){
@@ -198,6 +206,12 @@ void trataPaciente_tempDoctor(){
   struct msqid_ds* info_mq = malloc(sizeof(struct msqid_ds));
   int check_exit = 0;
 
+  printf("Doutor temporario [%d] começou o seu turno\n", getpid());
+  //Escreve no log
+  /*char message[MAX_LOG_MESSAGE];
+  sprintf(message, "Doutor temporario [%d] começou o seu turno.\n",getpid());
+  write_to_log(message);*/
+
   while(1){
     //Verifica o estado da message queue
     if(sem_wait(globalVars.semMQ)!=0){
@@ -228,5 +242,8 @@ void trataPaciente_tempDoctor(){
     if(check_exit) break;
   }
 
-  printf("Temporary doctor ending.\n");
+  printf("Doutor temporario [%d] acabou o seu turno.\n", getpid());
+  //Escreve no log
+  /*sprintf(message, "Doutor temporario [%d] acabou o seu turno.\n",getpid());
+  write_to_log(message);*/
 }

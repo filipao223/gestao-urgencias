@@ -27,6 +27,10 @@ void cleanup(int signum){
   msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
   msgctl(globalVars.mq_id_doctor, IPC_RMID, 0);
 
+  sem_unlink("SemLog");
+  sem_unlink("SemMQ");
+  sem_unlink("SemSHM");
+
   sem_close(globalVars.semLog);
   sem_close(globalVars.semMQ);
   sem_close(globalVars.semSHM);
