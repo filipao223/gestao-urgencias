@@ -13,9 +13,6 @@
 //Operaçoes triagem
 
 Globals globalVars;
-struct timeval stop_atend, start_atend,stop_triagem, start_triage;
-int tempo_atend = 0;
-int tempo_triagem = 0;
 
 void* triaPaciente(void* t){
   Paciente paciente;
@@ -40,10 +37,8 @@ void* triaPaciente(void* t){
       perror("");
     }
 
-    paciente.atend_time = tempo_atend;
     printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
-    gettimeofday(&start_triage,NULL);
-    //Escreve as estatisticas em memoria partilhada (por fazer)
+
     //Espera pelo tempo de triagem
     usleep(paciente.triage_time);
 
@@ -57,7 +52,7 @@ void* triaPaciente(void* t){
     }
     else{
       printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
-      //estatisticas
+      //aumenta o numero de pacientes triados
       if(sem_wait(globalVars.semSHM) != 0){
         perror("");
       }

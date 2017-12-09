@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
+#define LOG_SIZE 4092
 #define MEM_SIZE 40
 #define MAX_BUFFER 2000
 #define PIPE_NAME "named_pipe"
@@ -26,7 +27,7 @@ typedef struct{
   unsigned long MQ_MAX;
   int TRIAGE, DOCTORS, SHIFT_LENGTH;
   //ID's threads, processos, memorias
-  int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
+  int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados, ptr_pos;
   int64_t* dadosPartilhados;
   int64_t *n_pacientes_triados, *n_pacientes_atendidos, *total_before_triage, *total_before_atend;
   char* log_ptr;
@@ -38,6 +39,7 @@ typedef struct{
   pthread_mutex_t mutex_doctor;
   //Outros
   int checkRequestedDoctor;
+  pid_t pid;
 }Globals;
 
 extern Globals globalVars;

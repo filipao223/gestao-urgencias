@@ -8,6 +8,7 @@
 
 #include "doutor.h"
 #include "global.h"
+#include "sinais.h"
 
 Globals globalVars;
 
@@ -18,14 +19,14 @@ int requestDoctor = 0;
 pthread_t temp_doctor_thread;
 
 void* createDoctors(){
-  pid_t pid;
   //Cria os doutores iniciais
   for(int i=0; i<globalVars.DOCTORS; i++){
-    if((pid = fork()) == 0){
+    if((globalVars.pid = fork()) == 0){
+      signal(SIGINT, cleanup);
       trataPaciente();
       exit(0);
     }
-    else if(pid < 0){
+    else if(globalVars.pid < 0){
       perror("Erro ao criar doutor\n");
     }
   }
@@ -40,11 +41,11 @@ void* createDoctors(){
   //Quando um acabar, começa outro
   while(1){
     wait(NULL);
-    if((pid = fork())==0){
+    if((globalVars.pid = fork())==0){
       trataPaciente();
       exit(0);
     }
-    else if(pid < 0){
+    else if(globalVars.pid < 0){
       perror("");
     }
   }
@@ -55,10 +56,9 @@ void* createDoctors(){
 void trataPaciente(){
   Paciente paciente;
   struct msqid_ds* info_mq = malloc(sizeof(struct msqid_ds));
-  time_t start_time = time(NULL), end_time;
+  time_t start_time = time(NULL), end_time = 0;
 
   printf("Doutor [%d] começou o seu turno.\n", getpid());
-  fflush(stdout);
 
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
@@ -74,7 +74,6 @@ void trataPaciente(){
       if(info_mq->msg_qnum > globalVars.MQ_MAX){
         //Atingiu mais de 100% de lotaçao, faz signal a thread para fazer mais um processo (por fazer)
         printf("Requesting temporary doctor\n");
-        fflush(stdout);
         requestDoctor = 1;
 
         //BLoqueia o mutex e faz sinal à thread para criar um doutor temporario
@@ -148,7 +147,6 @@ void* createTempDoctor(){
 
     //Doutor temporario pedido
     printf("\n\nTemporary doctor requested\n\n");
-    fflush(stdout);
     if(pthread_mutex_unlock(&globalVars.mutex_doctor)!=0){
       perror("Erro ao desbloquear mutex_doctor");
     }
@@ -203,17 +201,14 @@ void trataPaciente_tempDoctor(){
     }
     else{
       printf("Doutor temporario recebeu paciente %s\n", paciente.nome);
-      fflush(stdout);
-      //Escreve nas estatisticas (por fazer)
+
       //Espera tempo de atendimento
       usleep(paciente.atend_time);
       printf("Doutor temporario atendeu paciente %s\n", paciente.nome);
-      fflush(stdout);
     }
 
     if(check_exit) break;
   }
 
   printf("Temporary doctor ending.\n");
-  fflush(stdout);
 }

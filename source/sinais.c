@@ -15,6 +15,13 @@
 Globals globalVars;
 
 void cleanup(int signum){
+  printf("\n\n^C pressionado. A sair...\n\n");
+
+  //Pára os subprocessos
+  if(globalVars.pid == 0){
+    exit(0);
+  }
+
   close(globalVars.named_fd);
 
   msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
@@ -35,7 +42,7 @@ void cleanup(int signum){
 }
 
 void show_stats(int signum){
-  printf("SIGUSR1 received! Showing stats\n");
+  printf("\n\nSIGUSR1 received! Showing stats\n\n");
   fflush(stdout);
 
   if(sem_wait(globalVars.semSHM) != 0){
