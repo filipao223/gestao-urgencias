@@ -37,13 +37,9 @@ void* triaPaciente(void* t){
     temp-=paciente.before_triage;
 
     //Coloca o tempo no total de microsegundos
-    if(sem_wait(globalVars.semSHM) != 0){
-      perror("Erro ao decrementar semSHM em triaPaciente\n");
-    }
+    pthread_mutex_lock(&globalVars.mutex_doctor);
     (*globalVars.total_before_triage)+=temp;
-    if(sem_post(globalVars.semSHM) != 0){
-      perror("Erro ao incrementar semSHM em triaPaciente\n");
-    }
+    pthread_mutex_unlock(&globalVars.mutex_doctor);
 
     printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
 
@@ -61,14 +57,9 @@ void* triaPaciente(void* t){
     else{
       printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
       //aumenta o numero de pacientes triados
-      if(sem_wait(globalVars.semSHM) != 0){
-        perror("Erro ao decrementar semSHM em triaPaciente (2)\n");
-      }
+      pthread_mutex_lock(&globalVars.mutex_doctor);
       (*globalVars.n_pacientes_triados)++;
-
-      if(sem_post(globalVars.semSHM) != 0){
-        perror("Erro ao incrementar semSHM em triaPaciente (2)\n");
-      }
+      pthread_mutex_unlock(&globalVars.mutex_doctor);
     }
   }
 }
