@@ -56,3 +56,7 @@ void show_stats(int signum){
     perror("");
   }
 }
+
+void ignore_signal(int signum){
+  printf("\nRecebeu sinal %d!\n", signum);
+}

@@ -15,6 +15,8 @@ Globals globalVars;
 void trataPaciente_tempDoctor();
 void* createTempDoctor();
 
+void ignore_signal(int signum);
+
 int requestDoctor = 0;
 pthread_t temp_doctor_thread;
 
@@ -23,6 +25,14 @@ void* createDoctors(){
   for(int i=0; i<globalVars.DOCTORS; i++){
     if((globalVars.pid = fork()) == 0){
       signal(SIGINT, cleanup);
+
+      //Ignora os outros sinais
+      for(int i=1; i<31; i++){
+        if((i!=2) && (i!=10) && (i!=11)){
+          signal(i, ignore_signal);
+        }
+      }
+
       trataPaciente();
       exit(0);
     }
@@ -153,6 +163,14 @@ void* createTempDoctor(){
 
     //Cria um doutor
     if((temp_doctor = fork()) == 0){
+      signal(SIGINT, cleanup);
+
+      //Ignora os outros sinais
+      for(int i=1; i<31; i++){
+        if((i!=2) && (i!=10) && (i!=11)){
+          signal(i, ignore_signal);
+        }
+      }
       trataPaciente_tempDoctor();
       exit(0);
     }

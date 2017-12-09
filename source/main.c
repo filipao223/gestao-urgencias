@@ -27,6 +27,7 @@ int check_str_triage(char*);
 int check_sigusr1(char*);
 
 void show_stats(int signum);
+void ignore_signal(int signum);
 
 Globals globalVars;
 char buf[MAX_BUFFER];
@@ -38,6 +39,13 @@ int main(int argc, char** argv){
 
   signal(SIGINT, cleanup);
   signal(SIGUSR1, show_stats);
+
+  //Ignora os outros sinais
+  for(int i=1; i<31; i++){
+    if((i!=2) && (i!=10) && (i!=11)){
+      signal(i, ignore_signal);
+    }
+  }
 
   //Lê dados do ficheiro
   dados = readFile(fileptr);
