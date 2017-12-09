@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
-#define MEM_SIZE 20
+#define MEM_SIZE 40
 #define MAX_BUFFER 2000
 #define PIPE_NAME "named_pipe"
 #define MAX_NOME_PACIENTE 256
@@ -27,8 +27,8 @@ typedef struct{
   int TRIAGE, DOCTORS, SHIFT_LENGTH;
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados;
-  int* dadosPartilhados;
-  int *n_pacientes_triados, *n_pacientes_atendidos;
+  int64_t* dadosPartilhados;
+  int64_t *n_pacientes_triados, *n_pacientes_atendidos, *total_before_triage, *total_before_atend;
   char* log_ptr;
   //Descriptores de ficheiro
   int log_fd, named_fd;
@@ -52,6 +52,8 @@ typedef struct paciente{
   intmax_t triage_time, atend_time;
   char nome[MAX_NOME_PACIENTE];
   intmax_t prioridade;
+  //Tempos totais de atendimento e triagem
+  suseconds_t before_triage, before_atend, total_time;
 }Paciente;
 
 #endif //GLOBAL_H

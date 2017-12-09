@@ -59,7 +59,7 @@ void* createDoctors(){
 void trataPaciente(){
   Paciente paciente;
   struct msqid_ds* info_mq = malloc(sizeof(struct msqid_ds));
-  time_t start_time = time(NULL), end_time,start_atender,end_atender;
+  time_t start_time = time(NULL), end_time;
 
   printf("Doutor [%d] começou o seu turno.\n", getpid());
 
@@ -101,29 +101,37 @@ void trataPaciente(){
     if(msgrcv(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
       perror("Erro ao receber da message queue doutor\n");
     }
-    else{
-      printf("Doutor [%d] recebeu paciente %s\n", getpid(), paciente.nome);
-      start_atender = time(NULL);
-      //Escreve nas estatisticas (por fazer)
 
-      //Espera tempo de atendimento
-      usleep(paciente.atend_time*1000); //Converte para milisegundos
+    //Pára o contador do tempo
+    struct timeval cont_tempo;
+    suseconds_t temp = cont_tempo.tv_usec;
+    temp-=paciente.before_atend;
 
-      if(sem_wait(globalVars.semSHM) != 0){
-        perror("");
-      }
-      
-      (*globalVars.n_pacientes_atendidos)++;
-      end_atender = time(NULL);
-      tempo_atendimento += end_atender - start_atender;
-      n_pacientes_tratados +=1;
-
-      if(sem_post(globalVars.semSHM) != 0){
-        perror("");
-      }
-      printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
+    if(sem_wait(globalVars.semSHM) != 0){
+      perror("");
     }
-    end_time = time(NULL); //Compara com o num de segundos quando criado
+    (*globalVars.total_before_atend)+=temp;
+    if(sem_post(globalVars.semSHM) != 0){
+      perror("");
+    }
+
+    printf("Doutor [%d] recebeu paciente %s\n", getpid(), paciente.nome);
+
+    //Espera tempo de atendimento
+    usleep(paciente.atend_time*1000); //Converte para milisegundos
+    end_time = time(NULL);
+
+    if(sem_wait(globalVars.semSHM) != 0){
+      perror("");
+    }
+
+    (*globalVars.n_pacientes_atendidos)++;
+
+    if(sem_post(globalVars.semSHM) != 0){
+      perror("");
+    }
+    printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
+
   }
   printf("Doutor [%d] acabou o seu turno\n", getpid());
 }

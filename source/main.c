@@ -14,6 +14,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <sys/time.h>
 
 #include "ficheiro.h"
 #include "triagem.h"
@@ -57,6 +58,8 @@ int main(int argc, char** argv){
   //Renomeia as zonas de memoria partilhada
   globalVars.n_pacientes_triados = globalVars.dadosPartilhados;
   globalVars.n_pacientes_atendidos = globalVars.dadosPartilhados+1;
+  globalVars.total_before_triage = globalVars.dadosPartilhados+2;
+  globalVars.total_before_atend = globalVars.dadosPartilhados+3;
 
   //Cria mmf
   globalVars.log_fd = open("log.txt", O_RDWR);
@@ -117,9 +120,9 @@ int main(int argc, char** argv){
   for(int i=0; i<globalVars.TRIAGE; i++){
     if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0)
       printf("Erro ao criar thread!\n");
-    /*char message[MAX_LOG_MESSAGE];
+    char message[MAX_LOG_MESSAGE];
     sprintf(message, "Thread %d criada\n", i);
-    write_to_log(message);*/
+    write_to_log(message);
   }
 
   //Recebe os pacientes pelo named pipe
@@ -151,6 +154,12 @@ int main(int argc, char** argv){
         tokens = strtok(NULL, " ");
         paciente.prioridade = strtoimax(tokens, &ptr, 10);
         contPaciente++;
+
+        //Inicia o contador do tempo
+        struct timeval cont_tempo;
+        gettimeofday(&cont_tempo, NULL);
+        paciente.before_triage = cont_tempo.tv_usec;
+
         //Envia para a message queue
         msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
       }
@@ -169,6 +178,12 @@ int main(int argc, char** argv){
       tokens = strtok(NULL, " ");
       paciente.prioridade = strtoimax(tokens, &ptr, 10);
       contPaciente++;
+
+      //Inicia o contador do tempo
+      struct timeval cont_tempo;
+      gettimeofday(&cont_tempo, NULL);
+      paciente.before_triage = cont_tempo.tv_usec;
+
       //Envia para a message queue
       msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
     }
