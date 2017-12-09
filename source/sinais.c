@@ -22,9 +22,11 @@ void cleanup(int signum){
     pthread_cancel(globalVars.thread_triage[i]);
     pthread_join(globalVars.thread_triage[i], NULL);
   }
-  for(int i=0; i< (sizeof(globalVars.new_thread_triage) / sizeof(pthread_t)); i++){
-    pthread_cancel(globalVars.new_thread_triage[i]);
-    pthread_join(globalVars.new_thread_triage[i], NULL);
+  if(globalVars.newTriage != -1){ //No caso ter criado triagens adicionais
+    for(int i=0; i< (sizeof(globalVars.new_thread_triage) / sizeof(pthread_t)); i++){
+      pthread_cancel(globalVars.new_thread_triage[i]);
+      pthread_join(globalVars.new_thread_triage[i], NULL);
+    }
   }
   pthread_cancel(globalVars.thread_doctors);
   pthread_join(globalVars.thread_doctors, NULL);

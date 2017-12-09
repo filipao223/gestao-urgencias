@@ -148,6 +148,8 @@ int main(int argc, char** argv){
     perror("Erro ao criar thread temp_doctor_thread\n");
   }
 
+  globalVars.newTriage = -1;
+
   usleep(100);
 
   //Cria as threads de triagem
@@ -231,12 +233,10 @@ int main(int argc, char** argv){
       #endif
       //É do formato TRIAGE=??
       tokens = strtok(buf, "="); tokens = strtok(NULL, "=");
-      int newTriage = strtoimax(tokens, &ptr, 10);
-      printf("NeTriage = %d", newTriage);
-      if(newTriage>globalVars.TRIAGE){
-        globalVars.new_thread_triage = malloc(sizeof(pthread_t)*(newTriage*globalVars.TRIAGE)); //Para apenas adicionar ao total
-        printf("New triage = %d\n", newTriage);
-        for(int i=0; i<newTriage-globalVars.TRIAGE; i++){
+      globalVars.newTriage = strtoimax(tokens, &ptr, 10);
+      if(globalVars.newTriage>globalVars.TRIAGE){
+        globalVars.new_thread_triage = malloc(sizeof(pthread_t)*(globalVars.newTriage*globalVars.TRIAGE)); //Para apenas adicionar ao total
+        for(int i=0; i<globalVars.newTriage-globalVars.TRIAGE; i++){
           if(pthread_create(&globalVars.new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
         }
       }

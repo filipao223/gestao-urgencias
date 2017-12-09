@@ -20,7 +20,7 @@
 #define PIPE_NAME "input_pipe"
 #define MAX_NOME_PACIENTE 256
 #define MTYPE 1
-#define DEBUG
+//#define DEBUG
 
 //Struct das variavies globais
 typedef struct{
@@ -43,6 +43,7 @@ typedef struct{
   pid_t pid;
   pthread_t* thread_triage, *new_thread_triage;
   pthread_t thread_doctors, temp_doctor_thread;
+  int newTriage;
 }Globals;
 
 extern Globals globalVars;
