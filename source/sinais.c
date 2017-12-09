@@ -41,10 +41,10 @@ void show_stats(int signum){
   if(sem_wait(globalVars.semSHM) != 0){
     perror("");
   }
-
-  printf("Numero de pacientes atendidos: %d\n", *(globalVars.n_pacientes_atendidos));
-  printf("Numero de pacientes triados: %d\n", *(globalVars.n_pacientes_triados));
-
+  printf("Numero de pacientes atendidos: %ld\n", *(globalVars.n_pacientes_atendidos));
+  printf("Numero de pacientes triados: %ld\n", *(globalVars.n_pacientes_triados));
+  printf("Media de tempo ate ser triado (em microsegundos): %.2lf\n", *(globalVars.total_before_triage)/(double)*(globalVars.n_pacientes_triados));
+  printf("Media de tempo ate ser atendido (em microsegundos): %.2lf\n", *(globalVars.total_before_atend)/(double)*(globalVars.n_pacientes_atendidos));
   if(sem_post(globalVars.semSHM) != 0){
     perror("");
   }
