@@ -80,22 +80,22 @@ int main(int argc, char** argv){
 
   //Cria e abre named pipe
   if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
-    perror("Erro ao criar named pipe");
+    perror("Erro ao criar named pipe\n");
     exit(0);
   }
   if((globalVars.named_fd = open(PIPE_NAME, O_RDONLY)) < 0){
-    perror("Erro ao abrir named pipe");
+    perror("Erro ao abrir named pipe\n");
     exit(0);
   }
 
   //Cria as filas de mensagens
   if((globalVars.mq_id_thread = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
-    perror("Erro ao criar message queue");
+    perror("Erro ao criar message queue triage\n");
     exit(0);
   }
 
   if((globalVars.mq_id_doctor = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
-    perror("Erro ao criar message queue");
+    perror("Erro ao criar message queue doctor\n");
     exit(0);
   }
 

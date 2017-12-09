@@ -19,7 +19,7 @@ void* triaPaciente(void* t){
 
   while(1){
     if(msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
-      perror("");
+      perror("Erro ao receber da queue em triaPaciente\n");
     }
 
     //Pára o contador do tempo antes da triagem e Calcula o tempo
@@ -30,11 +30,11 @@ void* triaPaciente(void* t){
 
     //Coloca o tempo no total de microsegundos
     if(sem_wait(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao decrementar semSHM em triaPaciente\n");
     }
     (*globalVars.total_before_triage)+=temp;
     if(sem_post(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao incrementar semSHM em triaPaciente\n");
     }
 
     printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
@@ -48,18 +48,18 @@ void* triaPaciente(void* t){
     paciente.before_atend = cont_tempo2.tv_usec;
 
     if(msgsnd(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), 0) < 0){
-      perror("");
+      perror("Erro ao enviar para a queue em triaPaciente\n");
     }
     else{
       printf("Thread [%ld] enviou paciente %s\n", pthread_self(), paciente.nome);
       //aumenta o numero de pacientes triados
       if(sem_wait(globalVars.semSHM) != 0){
-        perror("");
+        perror("Erro ao decrementar semSHM em triaPaciente (2)\n");
       }
       (*globalVars.n_pacientes_triados)++;
 
       if(sem_post(globalVars.semSHM) != 0){
-        perror("");
+        perror("Erro ao incrementar semSHM em triaPaciente (2)\n");
       }
     }
   }

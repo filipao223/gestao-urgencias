@@ -46,7 +46,7 @@ void* createDoctors(){
 
   //Thread que vai criar o doutor temporario, se for preciso
   if(pthread_create(&temp_doctor_thread, 0, createTempDoctor, NULL)!=0){
-    perror("");
+    perror("Erro ao criar thread temp_doctor_thread\n");
   }
   //Quando um acabar, começa outro
   while(1){
@@ -56,7 +56,7 @@ void* createDoctors(){
       exit(0);
     }
     else if(globalVars.pid < 0){
-      perror("");
+      perror("Erro ao criar novo doutor\n");
     }
   }
 
@@ -73,7 +73,7 @@ void trataPaciente(){
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
     if(sem_wait(globalVars.semMQ) != 0){
-      perror("Erro ao decrementar semaforo\n");
+      perror("Erro ao decrementar semMQ em trataPaciente\n");
     }
 
     //Verifica se ja foi pedido doutor adicional
@@ -88,20 +88,20 @@ void trataPaciente(){
 
         //BLoqueia o mutex e faz sinal à thread para criar um doutor temporario
         if(pthread_mutex_lock(&globalVars.mutex_doctor) != 0){
-          perror("Erro ao bloquear mutex_doctor\n");
+          perror("Erro ao bloquear mutex_doctor em trataPaciente\n");
         }
         if(pthread_cond_signal(&globalVars.cond_var_doctor) != 0){
-          perror("Erro ao fazer signal de cond_var_doctor\n");
+          perror("Erro ao fazer signal de cond_var_doctor em trataPaciente\n");
         }
         if(pthread_mutex_unlock(&globalVars.mutex_doctor) != 0){
-          perror("Erro ao desbloquear mutex_doctor\n");
+          perror("Erro ao desbloquear mutex_doctor em trataPaciente\n");
         }
       }
     }
     //Já foi pedido, não pode ser pedido outra vez
 
     if(sem_post(globalVars.semMQ) !=0 ){
-      perror("Erro ao incrementar semaforo\n");
+      perror("Erro ao incrementar semMQ em trataPaciente\n");
     }
 
     //Recebe paciente da queue
@@ -115,11 +115,11 @@ void trataPaciente(){
     temp-=paciente.before_atend;
 
     if(sem_wait(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao incrementar semSHM em trataPaciente\n");
     }
     (*globalVars.total_before_atend)+=temp;
     if(sem_post(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao decrementar semSHM em trataPaciente\n");
     }
 
     printf("Doutor [%d] recebeu paciente %s\n", getpid(), paciente.nome);
@@ -129,13 +129,13 @@ void trataPaciente(){
     end_time = time(NULL);
 
     if(sem_wait(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
     }
 
     (*globalVars.n_pacientes_atendidos)++;
 
     if(sem_post(globalVars.semSHM) != 0){
-      perror("");
+      perror("Erro ao decrementar semSHM em trataPaciente (2)\n");
     }
     printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
 
@@ -148,7 +148,7 @@ void* createTempDoctor(){
   //Vai esperar que seja acordada para criar mais um processo temporario
   while(1){
     if(pthread_mutex_lock(&globalVars.mutex_doctor) != 0){
-      perror("Erro ao bloquear mutex_doctor\n");
+      perror("Erro ao bloquear mutex_doctor em createTempDoctor\n");
     }
 
     while(!requestDoctor){
@@ -158,7 +158,7 @@ void* createTempDoctor(){
     //Doutor temporario pedido
     printf("\n\nTemporary doctor requested\n\n");
     if(pthread_mutex_unlock(&globalVars.mutex_doctor)!=0){
-      perror("Erro ao desbloquear mutex_doctor");
+      perror("Erro ao desbloquear mutex_doctor em createTempDoctor\n");
     }
 
     //Cria um doutor
@@ -182,11 +182,11 @@ void* createTempDoctor(){
     waitpid(temp_doctor, NULL, WNOHANG);
     //Acabou, volta a colocar a condiçao a 0
     if(pthread_mutex_lock(&globalVars.mutex_doctor)!=0){
-      perror("");
+      perror("Erro ao bloquear mutex_doctor em createTempDoctor (2)\n");
     }
     requestDoctor = 0;
     if(pthread_mutex_unlock(&globalVars.mutex_doctor)!=0){
-      perror("");
+      perror("Erro ao desbloquear mutex_doctor em createTempDoctor (2)\n");
     }
   }
   pthread_exit(NULL);
@@ -201,7 +201,7 @@ void trataPaciente_tempDoctor(){
   while(1){
     //Verifica o estado da message queue
     if(sem_wait(globalVars.semMQ)!=0){
-      perror("");
+      perror("Erro ao decrementar semMQ em trataPaciente_tempDoctor\n");
     }
 
     msgctl(globalVars.mq_id_doctor, IPC_STAT, info_mq);
@@ -210,12 +210,12 @@ void trataPaciente_tempDoctor(){
       check_exit = 1;
     }
     if(sem_post(globalVars.semMQ)!=0){
-      perror("");
+      perror("Erro ao incrementar semMQ em trataPaciente_tempDoctor\n");
     }
 
     //Recebe paciente da queue
     if(msgrcv(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
-      perror("");
+      perror("Erro ao receber paciente da queue em trataPaciente_tempDoctor\n");
     }
     else{
       printf("Doutor temporario recebeu paciente %s\n", paciente.nome);
