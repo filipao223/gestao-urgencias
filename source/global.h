@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
-#define LOG_SIZE 1024
+#define LOG_SIZE 1048576
 #define MEM_SIZE 40
 #define MAX_BUFFER 2000
 #define PIPE_NAME "input_pipe"
@@ -41,6 +41,8 @@ typedef struct{
   //Outros
   int checkRequestedDoctor;
   pid_t pid;
+  pthread_t* thread_triage, *new_thread_triage;
+  pthread_t thread_doctors, temp_doctor_thread;
 }Globals;
 
 extern Globals globalVars;

@@ -5,6 +5,8 @@
 #include <time.h>
 #include <sys/msg.h>
 #include <sys/time.h>
+#include <string.h>
+#include <sys/mman.h>
 
 #include "doutor.h"
 #include "global.h"
@@ -19,7 +21,6 @@ void* createTempDoctor();
 void ignore_signal(int signum);
 
 int requestDoctor = 0;
-pthread_t temp_doctor_thread;
 
 void* createDoctors(){
   //Cria os doutores iniciais
@@ -45,10 +46,6 @@ void* createDoctors(){
   printf("Thread [%ld] criou doutores iniciais.\n", pthread_self());
   fflush(stdout);
 
-  //Thread que vai criar o doutor temporario, se for preciso
-  if(pthread_create(&temp_doctor_thread, 0, createTempDoctor, NULL)!=0){
-    perror("Erro ao criar thread temp_doctor_thread\n");
-  }
   //Quando um acabar, começa outro
   while(1){
     wait(NULL);
@@ -71,9 +68,9 @@ void trataPaciente(){
 
   printf("Doutor [%d] começou o seu turno.\n", getpid());
   //Escreve no log
-  /*char message[MAX_LOG_MESSAGE];
+  char message[MAX_LOG_MESSAGE];
   sprintf(message, "Doutor [%d] começou o seu turno.\n",getpid());
-  write_to_log(message);*/
+  write_to_log(message);
 
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
@@ -147,8 +144,9 @@ void trataPaciente(){
   }
   printf("Doutor [%d] acabou o seu turno\n", getpid());
   //Escreve no log
-  /*sprintf(message, "Doutor [%d] acabou o seu turno.\n",getpid());
-  write_to_log(message);*/
+  sprintf(message, "Doutor [%d] acabou o seu turno.\n",getpid());
+  printf("Message = %s\n", message);
+  write_to_log(message);
 }
 
 void* createTempDoctor(){
@@ -208,9 +206,9 @@ void trataPaciente_tempDoctor(){
 
   printf("Doutor temporario [%d] começou o seu turno\n", getpid());
   //Escreve no log
-  /*char message[MAX_LOG_MESSAGE];
+  char message[MAX_LOG_MESSAGE];
   sprintf(message, "Doutor temporario [%d] começou o seu turno.\n",getpid());
-  write_to_log(message);*/
+  write_to_log(message);
 
   while(1){
     //Verifica o estado da message queue
@@ -244,6 +242,6 @@ void trataPaciente_tempDoctor(){
 
   printf("Doutor temporario [%d] acabou o seu turno.\n", getpid());
   //Escreve no log
-  /*sprintf(message, "Doutor temporario [%d] acabou o seu turno.\n",getpid());
-  write_to_log(message);*/
+  sprintf(message, "Doutor temporario [%d] acabou o seu turno.\n",getpid());
+  write_to_log(message);
 }

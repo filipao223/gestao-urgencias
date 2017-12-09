@@ -29,6 +29,9 @@ int check_sigusr1(char*);
 void show_stats(int signum);
 void ignore_signal(int signum);
 
+void trataPaciente_tempDoctor();
+void* createTempDoctor();
+
 Globals globalVars;
 char buf[MAX_BUFFER];
 int contPaciente=1;
@@ -54,7 +57,7 @@ int main(int argc, char** argv){
   globalVars.SHIFT_LENGTH=dados.shift_length;
   globalVars.MQ_MAX=dados.mq_max;
 
-  pthread_t thread_doctors, thread_triage[globalVars.TRIAGE];
+  globalVars.thread_triage = malloc(sizeof(pthread_t)*globalVars.TRIAGE);
   long ids[globalVars.TRIAGE];
 
   srand(time(NULL));
@@ -76,12 +79,12 @@ int main(int argc, char** argv){
   globalVars.total_before_atend = globalVars.dadosPartilhados+3;
 
   //Cria mmf
-  globalVars.log_fd = open("log.txt", O_WRONLY|O_CREAT, 0600);
+  globalVars.log_fd = open("log.txt", O_RDWR|O_CREAT, 0600);
 
   lseek(globalVars.log_fd, LOG_SIZE-1, SEEK_SET);
   write(globalVars.log_fd, "", 1);
 
-  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_WRITE, MAP_SHARED, globalVars.log_fd, 0);
+  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_WRITE|PROT_READ, MAP_SHARED, globalVars.log_fd, 0);
   globalVars.ptr_pos = 0;
 
   //Cria e abre named pipe
@@ -136,15 +139,20 @@ int main(int argc, char** argv){
   globalVars.checkRequestedDoctor = 0;
 
   //Cria a thread que vai criar processos doutor
-  pthread_create(&thread_doctors, NULL, createDoctors, 0);
-  sleep(1);
+  if(pthread_create(&globalVars.thread_doctors, NULL, createDoctors, 0)!=0){
+    perror("Erro ao criar thread thread_doctors\n");
+  }
+
+  //Thread que vai criar o doutor temporario, se for preciso
+  if(pthread_create(&globalVars.temp_doctor_thread, 0, createTempDoctor, NULL)!=0){
+    perror("Erro ao criar thread temp_doctor_thread\n");
+  }
+
+  usleep(100);
 
   //Cria as threads de triagem
   for(int i=0; i<globalVars.TRIAGE; i++){
-    if(pthread_create(&thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
-    /*char message[MAX_LOG_MESSAGE];
-    sprintf(message, "Thread criada\n");
-    write_to_log(message);*/
+    if(pthread_create(&globalVars.thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
   }
 
   //Recebe os pacientes pelo named pipe
@@ -226,10 +234,10 @@ int main(int argc, char** argv){
       int newTriage = strtoimax(tokens, &ptr, 10);
       printf("NeTriage = %d", newTriage);
       if(newTriage>globalVars.TRIAGE){
-        pthread_t new_thread_triage[globalVars.TRIAGE-newTriage];
+        globalVars.new_thread_triage = malloc(sizeof(pthread_t)*(newTriage*globalVars.TRIAGE)); //Para apenas adicionar ao total
         printf("New triage = %d\n", newTriage);
         for(int i=0; i<newTriage-globalVars.TRIAGE; i++){
-          if(pthread_create(&new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
+          if(pthread_create(&globalVars.new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
         }
       }
     }
@@ -248,18 +256,6 @@ int main(int argc, char** argv){
 
     globalVars.named_fd = open(PIPE_NAME, O_RDONLY);
   }
-
-  sleep(3);
-  //Trata os dados relativos a tempos de Espera
-
-  //Calcula media de tempo triado
-
-  //Limpa recursos
-  shmdt(&(globalVars.dadosPartilhados));
-  shmctl(globalVars.shmid, IPC_RMID, NULL);
-  munmap(globalVars.log_ptr, getpagesize());
-
-  return 1;
 }
 
 int check_str_triage(char* str){

@@ -17,6 +17,20 @@ Globals globalVars;
 void cleanup(int signum){
   printf("\n\n^C pressionado. A sair...\n\n");
 
+  //Pára as threads
+  for(int i=0; i<globalVars.TRIAGE; i++){
+    pthread_cancel(globalVars.thread_triage[i]);
+    pthread_join(globalVars.thread_triage[i], NULL);
+  }
+  for(int i=0; i< (sizeof(globalVars.new_thread_triage) / sizeof(pthread_t)); i++){
+    pthread_cancel(globalVars.new_thread_triage[i]);
+    pthread_join(globalVars.new_thread_triage[i], NULL);
+  }
+  pthread_cancel(globalVars.thread_doctors);
+  pthread_join(globalVars.thread_doctors, NULL);
+  pthread_cancel(globalVars.temp_doctor_thread);
+  pthread_join(globalVars.temp_doctor_thread, NULL);
+
   //Pára os subprocessos
   if(globalVars.pid == 0){
     exit(0);
@@ -62,5 +76,5 @@ void show_stats(int signum){
 }
 
 void ignore_signal(int signum){
-  printf("\nRecebeu sinal %d!\n", signum);
+  if(signum != SIGCHLD) printf("Recebeu sinal %d\n", signum);
 }

@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <sys/time.h>
+#include <string.h>
+#include <sys/mman.h>
 
 #include "triagem.h"
 #include "global.h"
@@ -18,9 +20,10 @@ Globals globalVars;
 void* triaPaciente(void* t){
   Paciente paciente;
   printf("Thread %ld criada\n", pthread_self());
-  /*char message[MAX_LOG_MESSAGE];
+  char message[MAX_LOG_MESSAGE];
   sprintf(message, "Thread %ld criada\n", pthread_self());
-  write_to_log(message);*/
+  printf("Message= %s\n", message);
+  write_to_log(message);
 
   while(1){
     if(msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
