@@ -1,3 +1,8 @@
+#Autores: \
+  João Filipe Sequeira Montenegro Nº 2016228672 \
+  João Miguel Rainho Mendes Nº 2016230975
+
+
 CFLAGS = -c -g -Wall -D_REENTRANT -pthread
 CFLAGSF = -g -Wall -D_REENTRANT -pthread
 CC = gcc

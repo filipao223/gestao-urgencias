@@ -1,3 +1,7 @@
+/*Autores:
+  João Filipe Sequeira Montenegro Nº 2016228672
+  João Miguel Rainho Mendes Nº 2016230975
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

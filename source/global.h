@@ -1,3 +1,7 @@
+/*Autores:
+  João Filipe Sequeira Montenegro Nº 2016228672
+  João Miguel Rainho Mendes Nº 2016230975
+*/
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
@@ -30,7 +34,7 @@ typedef struct{
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados, ptr_pos;
   int64_t* dadosPartilhados;
-  int64_t *n_pacientes_triados, *n_pacientes_atendidos, *total_time_before_triage, *total_time_before_atend, *total_time;
+  int64_t*n_pacientes_triados, *n_pacientes_atendidos, *total_time_before_triage, *total_time_before_atend, *total_time;
   char* log_ptr;
   pid_t pid;
   pthread_t* thread_triage, *new_thread_triage;

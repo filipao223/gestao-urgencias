@@ -1,3 +1,7 @@
+/*Autores:
+  João Filipe Sequeira Montenegro Nº 2016228672
+  João Miguel Rainho Mendes Nº 2016230975
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -23,7 +27,7 @@ void cleanup(int signum){
     pthread_join(globalVars.thread_triage[i], NULL);
   }
   if(globalVars.newTriage != -1){ //No caso ter criado triagens adicionais
-    for(int i=0; i<(globalVars.newTriage - globalVars.TRIAGE); i++){
+    for(int i=0; i<(globalVars.newTriage); i++){
       pthread_cancel(globalVars.new_thread_triage[i]);
       pthread_join(globalVars.new_thread_triage[i], NULL);
     }
@@ -66,8 +70,8 @@ void show_stats(int signum){
   fflush(stdout);
 
   pthread_mutex_lock(&globalVars.mutex_doctor);
-  printf("Numero de pacientes atendidos: %ld\n", *(globalVars.n_pacientes_atendidos));
-  printf("Numero de pacientes triados: %ld\n", *(globalVars.n_pacientes_triados));
+  printf("Numero de pacientes atendidos: %lld\n", *(globalVars.n_pacientes_atendidos));
+  printf("Numero de pacientes triados: %lld\n", *(globalVars.n_pacientes_triados));
   printf("Media de tempo ate ser triado (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_triage)/(double)*(globalVars.n_pacientes_triados))/1000000.0);
   printf("Media de tempo ate ser atendido (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_atend)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
   printf("Media de tempo total gasto no sistema (em milisegundos): %.2lf\n\n", (*(globalVars.total_time)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
