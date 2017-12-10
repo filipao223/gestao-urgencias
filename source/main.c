@@ -77,6 +77,7 @@ int main(int argc, char** argv){
   globalVars.n_pacientes_atendidos = globalVars.dadosPartilhados+1;
   globalVars.total_before_triage = globalVars.dadosPartilhados+2;
   globalVars.total_before_atend = globalVars.dadosPartilhados+3;
+  globalVars.total_time = globalVars.dadosPartilhados+4;
 
   //Cria mmf
   globalVars.log_fd = open("log.txt", O_RDWR|O_CREAT, 0600);
@@ -190,10 +191,11 @@ int main(int argc, char** argv){
         paciente.prioridade = strtoimax(tokens, &ptr, 10);
         contPaciente++;
 
-        //Inicia o contador do tempo
+        //Inicia o contador do tempo antes da triagem e o tempo total
         struct timeval cont_tempo;
         gettimeofday(&cont_tempo, NULL);
         paciente.before_triage = cont_tempo.tv_usec;
+        paciente.total_time = cont_tempo.tv_usec;
 
         //Envia para a message queue
         msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);

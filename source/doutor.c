@@ -111,15 +111,16 @@ void trataPaciente(){
       perror("Erro ao receber da message queue doutor\n");
     }
 
-    //Pára o contador do tempo
+    //Pára o contador do tempo entre a triagem e o atendimento
     struct timeval cont_tempo;
+    gettimeofday(&cont_tempo, NULL);
     suseconds_t temp = cont_tempo.tv_usec;
     temp-=paciente.before_atend;
 
     if(sem_wait(globalVars.semSHM) != 0){
       perror("Erro ao incrementar semSHM em trataPaciente\n");
     }
-    (*globalVars.total_before_atend)+=temp;
+    (*globalVars.total_before_atend)+=temp; //Adiciona ao total do tempo
     if(sem_post(globalVars.semSHM) != 0){
       perror("Erro ao decrementar semSHM em trataPaciente\n");
     }
@@ -129,6 +130,20 @@ void trataPaciente(){
     //Espera tempo de atendimento
     usleep(paciente.atend_time*1000); //Converte para milisegundos
     end_time = time(NULL);
+
+    //Pára o contador de tempo total do paciente
+    struct timeval cont_tempo2;
+    gettimeofday(&cont_tempo2, NULL);
+    temp = cont_tempo2.tv_usec;
+    temp-=paciente.total_time;
+
+    if(sem_wait(globalVars.semSHM) != 0){
+      perror("Erro ao incrementar semSHM em trataPaciente\n");
+    }
+    (*globalVars.total_time)+=temp; //Adiciona ao total do tempo
+    if(sem_post(globalVars.semSHM) != 0){
+      perror("Erro ao decrementar semSHM em trataPaciente\n");
+    }
 
     if(sem_wait(globalVars.semSHM) != 0){
       perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
