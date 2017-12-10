@@ -154,7 +154,7 @@ void trataPaciente(){
         perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
       }
 
-      (*globalVars.n_pacientes_atendidos)++;
+      (*globalVars.n_pacientes_atendidos)++; //incrementa o numero de pacientes atendidos
 
       if(sem_post(globalVars.semSHM) != 0){
         perror("Erro ao decrementar semSHM em trataPaciente (2)\n");
@@ -256,15 +256,15 @@ void trataPaciente_tempDoctor(){
       printf("Doutor temporario recebeu paciente %s\n", paciente.nome);
 
       //Pára o contador do tempo entre a triagem e o atendimento
-      struct timeval cont_tempo;
-      gettimeofday(&cont_tempo, NULL);
-      suseconds_t temp = cont_tempo.tv_usec;
+      struct timespec cont_tempo;
+      clock_gettime(CLOCK_REALTIME, &cont_tempo);
+      int64_t temp = cont_tempo.tv_nsec;
       temp-=paciente.before_atend;
 
       if(sem_wait(globalVars.semSHM) != 0){
         perror("Erro ao incrementar semSHM em trataPaciente\n");
       }
-      (*globalVars.total_time_before_atend)+=abs(temp); //Adiciona ao total do tempo
+      (*globalVars.total_time_before_atend)+=temp; //Adiciona ao total do tempo
       if(sem_post(globalVars.semSHM) != 0){
         perror("Erro ao decrementar semSHM em trataPaciente\n");
       }
@@ -274,17 +274,27 @@ void trataPaciente_tempDoctor(){
       printf("Doutor temporario atendeu paciente %s\n", paciente.nome);
 
       //Pára o contador de tempo total do paciente
-      struct timeval cont_tempo2;
-      gettimeofday(&cont_tempo2, NULL);
-      temp = cont_tempo2.tv_usec;
+      struct timespec cont_tempo2;
+      clock_gettime(CLOCK_REALTIME, &cont_tempo2);
+      temp = cont_tempo2.tv_nsec;
       temp-=paciente.total_time;
 
       if(sem_wait(globalVars.semSHM) != 0){
         perror("Erro ao incrementar semSHM em trataPaciente\n");
       }
-      (*globalVars.total_time)+=abs(temp); //Adiciona ao total do tempo
+      (*globalVars.total_time)+=temp; //Adiciona ao total do tempo
       if(sem_post(globalVars.semSHM) != 0){
         perror("Erro ao decrementar semSHM em trataPaciente\n");
+      }
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
+      }
+
+      (*globalVars.n_pacientes_atendidos)++; //incrementa o numero de pacientes atendidos
+
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente (2)\n");
       }
     }
 

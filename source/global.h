@@ -20,7 +20,7 @@
 #define PIPE_NAME "input_pipe"
 #define MAX_NOME_PACIENTE 256
 #define MTYPE 1
-#define DEBUG
+//#define DEBUG
 
 //Struct das variavies globais
 typedef struct{

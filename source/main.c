@@ -89,6 +89,10 @@ int main(int argc, char** argv){
   globalVars.ptr_pos = 0;
 
   //Cria e abre named pipe
+  #ifdef DEBUG
+  printf("A criar e abrir FIFO\n");
+  fflush(stdout);
+  #endif
   if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
     perror("Erro ao criar named pipe\n");
     cleanup(2);
@@ -120,6 +124,10 @@ int main(int argc, char** argv){
   sem_unlink("SemSHM");
 
   //Inicializa semaphore
+  #ifdef DEBUG
+  printf("A inicializar semaforos\n");
+  fflush(stdout);
+  #endif
   if((globalVars.semLog = sem_open("SemLog", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
     perror("Erro ao Inicializar SemLog\n");
     cleanup(SIGINT);
@@ -134,6 +142,10 @@ int main(int argc, char** argv){
   }
 
   //Inicializa variaveis de condiçao e mutexes
+  #ifdef DEBUG
+  printf("A inicializar variaveis de condiçao e mutexes\n");
+  fflush(stdout);
+  #endif
   pthread_mutex_init(&globalVars.mutex_doctor, NULL);
   pthread_cond_init(&globalVars.cond_var_doctor, NULL);
 
@@ -143,11 +155,13 @@ int main(int argc, char** argv){
   //Cria a thread que vai criar processos doutor
   if(pthread_create(&globalVars.thread_doctors, NULL, createDoctors, 0)!=0){
     perror("Erro ao criar thread thread_doctors\n");
+    cleanup(2);
   }
 
   //Thread que vai criar o doutor temporario, se for preciso
   if(pthread_create(&globalVars.temp_doctor_thread, 0, createTempDoctor, NULL)!=0){
     perror("Erro ao criar thread temp_doctor_thread\n");
+    cleanup(2);
   }
 
   globalVars.newTriage = -1;
@@ -182,25 +196,25 @@ int main(int argc, char** argv){
         bufTemp = strdup(buf);
         tokens = strtok(bufTemp, " ");
         //Trata os dados do paciente
-        //Cria um nome para o paciente
+        //Cria um nome para o paciente, usando a data e um contador
         struct tm* tm;
         time_t t = time(NULL);
-        tm = localtime(&t);
+        tm = localtime(&t); //localtime() preenche o struct tm usando o numero de segundos em tempo Unix
         sprintf(paciente.nome, "%d%d%d-%d", tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, contPaciente);
 
         paciente.arrival_time = time(NULL);
-        tokens = strtok(NULL, " ");
+        tokens = strtok(NULL, " "); //Tempo de triagem
         paciente.triage_time = strtoimax(tokens, &ptr, 10);
-        tokens = strtok(NULL, " ");
+        tokens = strtok(NULL, " "); //Tempo de atendimento
         paciente.atend_time = strtoimax(tokens, &ptr, 10);
-        tokens = strtok(NULL, " ");
+        tokens = strtok(NULL, " "); //prioridade
         paciente.prioridade = strtoimax(tokens, &ptr, 10);
         contPaciente++;
 
         //Inicia o contador do tempo antes da triagem e o tempo total
         struct timespec cont_tempo;
         clock_gettime(CLOCK_REALTIME, &cont_tempo);
-        paciente.before_triage = cont_tempo.tv_nsec;
+        paciente.before_triage = cont_tempo.tv_nsec; //Segundo atual em precisao de nanosegundo
         paciente.total_time = cont_tempo.tv_nsec;
 
         //Envia para a message queue
@@ -214,14 +228,14 @@ int main(int argc, char** argv){
       printf("Entrou no else if de nome num num num\n");
       #endif
       //È do formato nome num num num
-      tokens = strtok(buf, " ");
+      tokens = strtok(buf, " "); //Nome
       strcpy(paciente.nome, tokens);
       paciente.arrival_time = time(NULL);
-      tokens = strtok(NULL, " ");
+      tokens = strtok(NULL, " "); //Tempo de triagem
       paciente.triage_time = strtoimax(tokens, &ptr, 10);
-      tokens = strtok(NULL, " ");
+      tokens = strtok(NULL, " "); //Tempo de atendimento
       paciente.atend_time = strtoimax(tokens, &ptr, 10);
-      tokens = strtok(NULL, " ");
+      tokens = strtok(NULL, " "); //prioridade
       paciente.prioridade = strtoimax(tokens, &ptr, 10);
       contPaciente++;
 
@@ -237,16 +251,36 @@ int main(int argc, char** argv){
     //Não é do formato nome num num num
     else if(check_str_triage(buf)){
       #ifdef DEBUG
-      printf("Entrou no else if TRIAGE=xx\n");
+      printf("Entrou no else if TRIAGE=x\n");
       #endif
       //É do formato TRIAGE=??
       tokens = strtok(buf, "="); tokens = strtok(NULL, "=");
-      globalVars.newTriage = strtoimax(tokens, &ptr, 10);
-      if(globalVars.newTriage>globalVars.TRIAGE){
-        globalVars.new_thread_triage = malloc(sizeof(pthread_t)*(globalVars.newTriage*globalVars.TRIAGE)); //Para apenas adicionar ao total
-        for(int i=0; i<globalVars.newTriage-globalVars.TRIAGE; i++){
-          if(pthread_create(&globalVars.new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
+      int temp = strtoimax(tokens, &ptr, 10);
+      #ifdef DEBUG
+      printf("Temp = %d\n", temp);
+      #endif
+      int oldTriage = (globalVars.newTriage==-1?0:globalVars.newTriage);
+      #ifdef DEBUG
+      printf("oldTriage = %d\n", oldTriage);
+      #endif
+      if(temp>globalVars.newTriage){
+        globalVars.newTriage = temp;
+        //Só permite incrementar uma vez as triagens
+        if(oldTriage == 0){
+          #ifdef DEBUG
+          printf("Entrou no if oldTriage == 0\n");
+          #endif
+          globalVars.new_thread_triage = malloc(sizeof(pthread_t)*(globalVars.newTriage-globalVars.TRIAGE)); //Para apenas adicionar ao total
+          for(int i=0; i<globalVars.newTriage - globalVars.TRIAGE; i++){ //Para apenas criar o numero necessario de threads
+            if(pthread_create(&globalVars.new_thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
+          }
         }
+        else{
+          printf("Já foram adicionadas novas triagens\n");
+        }
+      }
+      else{
+        printf("Numero de novas triagens tem de ser superior ao que já existe\n");
       }
     }
 
@@ -266,7 +300,7 @@ int main(int argc, char** argv){
   }
 }
 
-int check_str_triage(char* str){
+int check_str_triage(char* str){ //Verifica se str é TRIAGE
   return
     str[0] == 'T' &&
     str[1] == 'R' &&
@@ -276,7 +310,7 @@ int check_str_triage(char* str){
     str[5] == 'E';
 }
 
-int check_sigusr1(char* str){
+int check_sigusr1(char* str){ //Verifica se str é STATS
   return
     str[0] == 'S' &&
     str[1] == 'T' &&

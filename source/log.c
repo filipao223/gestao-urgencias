@@ -11,8 +11,6 @@
 Globals globalVars;
 
 void write_to_log(char* message){
-  char toWrite[MAX_LOG_MESSAGE];
-  strcpy(toWrite, message);
   #ifdef DEBUG
   printf("A entrar em write_to_log...\n");
   #endif
@@ -23,11 +21,12 @@ void write_to_log(char* message){
   #ifdef DEBUG
   printf("A escrever no log...\n");
   #endif
-  memcpy(globalVars.log_ptr+globalVars.ptr_pos, toWrite, strlen(toWrite));
+  //Copia os bytes de message[0] para a posiçao no mmapped file correspondente a log_ptr + ptr_pos
+  memcpy(globalVars.log_ptr+globalVars.ptr_pos, message, strlen(message));
   #ifdef DEBUG
   printf("Passou do memcpy...\n");
   #endif
-  globalVars.ptr_pos+=strlen(toWrite);
+  globalVars.ptr_pos+=strlen(message);
   if(sem_post(globalVars.semLog) != 0){
     perror("Erro ao incrementar semLog em write_to_log\n");
     cleanup(2);

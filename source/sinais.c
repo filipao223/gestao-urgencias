@@ -23,7 +23,7 @@ void cleanup(int signum){
     pthread_join(globalVars.thread_triage[i], NULL);
   }
   if(globalVars.newTriage != -1){ //No caso ter criado triagens adicionais
-    for(int i=0; i< (sizeof(globalVars.new_thread_triage) / sizeof(pthread_t)); i++){
+    for(int i=0; i<(globalVars.newTriage - globalVars.TRIAGE); i++){
       pthread_cancel(globalVars.new_thread_triage[i]);
       pthread_join(globalVars.new_thread_triage[i], NULL);
     }
@@ -40,16 +40,20 @@ void cleanup(int signum){
 
   close(globalVars.named_fd);
 
+  //Remove as messages queues
   msgctl(globalVars.mq_id_thread, IPC_RMID, 0);
   msgctl(globalVars.mq_id_doctor, IPC_RMID, 0);
 
+  //Apaga as named semaphores
   sem_unlink("SemLog");
   sem_unlink("SemMQ");
   sem_unlink("SemSHM");
 
+  //Remove memória partilhada
   shmdt(&globalVars.dadosPartilhados);
   shmctl(globalVars.shmid, IPC_RMID, NULL);
 
+  //Sincroniza o mmaped file no disco e faz unmap
   msync(globalVars.log_ptr, LOG_SIZE, MS_SYNC);
   munmap(globalVars.log_ptr, getpagesize());
   close(globalVars.log_fd);
@@ -66,7 +70,7 @@ void show_stats(int signum){
   printf("Numero de pacientes triados: %ld\n", *(globalVars.n_pacientes_triados));
   printf("Media de tempo ate ser triado (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_triage)/(double)*(globalVars.n_pacientes_triados))/1000000.0);
   printf("Media de tempo ate ser atendido (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_atend)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
-  printf("Media de tempo total gasto no sistema (em milisegundos): %.2lf\n", (*(globalVars.total_time)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
+  printf("Media de tempo total gasto no sistema (em milisegundos): %.2lf\n\n", (*(globalVars.total_time)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
   pthread_mutex_unlock(&globalVars.mutex_doctor);
 }
 
