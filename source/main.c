@@ -181,7 +181,12 @@ int main(int argc, char** argv){
         bufTemp = strdup(buf);
         tokens = strtok(bufTemp, " ");
         //Trata os dados do paciente
-        sprintf(paciente.nome, "%d", contPaciente);
+        //Cria um nome para o paciente
+        struct tm* tm;
+        time_t t = time(NULL);
+        tm = localtime(&t);
+        sprintf(paciente.nome, "%d%d%d-%d", tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, contPaciente);
+
         paciente.arrival_time = time(NULL);
         tokens = strtok(NULL, " ");
         paciente.triage_time = strtoimax(tokens, &ptr, 10);
