@@ -20,7 +20,7 @@
 #define PIPE_NAME "input_pipe"
 #define MAX_NOME_PACIENTE 256
 #define MTYPE 1
-//#define DEBUG
+#define DEBUG
 
 //Struct das variavies globais
 typedef struct{
@@ -30,8 +30,11 @@ typedef struct{
   //ID's threads, processos, memorias
   int shmid, mq_id_thread, mq_id_doctor, numDadosPartilhados, ptr_pos;
   int64_t* dadosPartilhados;
-  int64_t *n_pacientes_triados, *n_pacientes_atendidos, *total_before_triage, *total_before_atend, *total_time;
+  int64_t *n_pacientes_triados, *n_pacientes_atendidos, *total_time_before_triage, *total_time_before_atend, *total_time;
   char* log_ptr;
+  pid_t pid;
+  pthread_t* thread_triage, *new_thread_triage;
+  pthread_t thread_doctors, temp_doctor_thread;
   //Descriptores de ficheiro
   int log_fd, named_fd;
   //Semaforos, mutexes, variaveis condiçao
@@ -40,26 +43,23 @@ typedef struct{
   pthread_mutex_t mutex_doctor;
   //Outros
   int checkRequestedDoctor;
-  pid_t pid;
-  pthread_t* thread_triage, *new_thread_triage;
-  pthread_t thread_doctors, temp_doctor_thread;
-  int newTriage;
+  int newTriage, requestDoctor;
 }Globals;
 
 extern Globals globalVars;
 
-typedef struct dados{
+typedef struct dados{ //Struct usado para guardar as informaçoes de config.txt
   int triage, doctors, shift_length, mq_max;
 }Dados;
 
-typedef struct paciente{
+typedef struct paciente{ //Struct usado para guardar as informaçoes dos pacientes
   long mtype;
   time_t arrival_time;
   intmax_t triage_time, atend_time;
   char nome[MAX_NOME_PACIENTE];
   intmax_t prioridade;
   //Tempos totais de atendimento e triagem
-  suseconds_t before_triage, before_atend, total_time;
+  long before_triage, before_atend, total_time;
 }Paciente;
 
 #endif //GLOBAL_H

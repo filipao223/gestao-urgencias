@@ -47,10 +47,6 @@ void cleanup(int signum){
   sem_unlink("SemMQ");
   sem_unlink("SemSHM");
 
-  sem_close(globalVars.semLog);
-  sem_close(globalVars.semMQ);
-  sem_close(globalVars.semSHM);
-
   shmdt(&globalVars.dadosPartilhados);
   shmctl(globalVars.shmid, IPC_RMID, NULL);
 
@@ -68,9 +64,9 @@ void show_stats(int signum){
   pthread_mutex_lock(&globalVars.mutex_doctor);
   printf("Numero de pacientes atendidos: %ld\n", *(globalVars.n_pacientes_atendidos));
   printf("Numero de pacientes triados: %ld\n", *(globalVars.n_pacientes_triados));
-  printf("Media de tempo ate ser triado (em milisegundos): %.2lf\n", (*(globalVars.total_before_triage)/(double)*(globalVars.n_pacientes_triados))/1000.0);
-  printf("Media de tempo ate ser atendido (em milisegundos): %.2lf\n", (*(globalVars.total_before_atend)/(double)*(globalVars.n_pacientes_atendidos))/1000.0);
-  printf("Media de tempo total gasto no sistema (em milisegundos): %.2lf\n", (*(globalVars.total_time)/(double)*(globalVars.n_pacientes_atendidos))/1000.0);
+  printf("Media de tempo ate ser triado (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_triage)/(double)*(globalVars.n_pacientes_triados))/1000000.0);
+  printf("Media de tempo ate ser atendido (em milisegundos): %.2lf\n", (*(globalVars.total_time_before_atend)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
+  printf("Media de tempo total gasto no sistema (em milisegundos): %.2lf\n", (*(globalVars.total_time)/(double)*(globalVars.n_pacientes_atendidos))/1000000.0);
   pthread_mutex_unlock(&globalVars.mutex_doctor);
 }
 

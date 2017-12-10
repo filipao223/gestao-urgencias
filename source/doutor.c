@@ -20,8 +20,6 @@ void* createTempDoctor();
 
 void ignore_signal(int signum);
 
-int requestDoctor = 0;
-
 void* createDoctors(){
   //Cria os doutores iniciais
   for(int i=0; i<globalVars.DOCTORS; i++){
@@ -44,7 +42,6 @@ void* createDoctors(){
   }
 
   printf("Thread [%ld] criou doutores iniciais.\n", pthread_self());
-  fflush(stdout);
 
   //Quando um acabar, começa outro
   while(1){
@@ -79,14 +76,14 @@ void trataPaciente(){
     }
 
     //Verifica se ja foi pedido doutor adicional
-    if(requestDoctor == 0){ //Ainda n foi pedido, pode ser pedido
+    if(globalVars.requestDoctor == 0){ //Ainda n foi pedido, pode ser pedido
       msgctl(globalVars.mq_id_doctor, IPC_STAT, info_mq);
 
       //printf("Numero de mensagens: %ld\n", info_mq->msg_qnum);
       if(info_mq->msg_qnum > globalVars.MQ_MAX){
         //Atingiu mais de 100% de lotaçao, faz signal a thread para fazer mais um processo (por fazer)
         printf("Requesting temporary doctor\n");
-        requestDoctor = 1;
+        globalVars.requestDoctor = 1;
 
         //BLoqueia o mutex e faz sinal à thread para criar um doutor temporario
         if(pthread_mutex_lock(&globalVars.mutex_doctor) != 0){
@@ -110,57 +107,68 @@ void trataPaciente(){
     if(msgrcv(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){
       perror("Erro ao receber da message queue doutor\n");
     }
+    else{
+      //Pára o contador do tempo entre a triagem e o atendimento
+      struct timespec cont_tempo;
+      clock_gettime(CLOCK_REALTIME, &cont_tempo);
+      int64_t temp = cont_tempo.tv_nsec;
+      temp-=paciente.before_atend;
 
-    //Pára o contador do tempo entre a triagem e o atendimento
-    struct timeval cont_tempo;
-    gettimeofday(&cont_tempo, NULL);
-    suseconds_t temp = cont_tempo.tv_usec;
-    temp-=paciente.before_atend;
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente\n");
+      }
+      (*globalVars.total_time_before_atend)+=temp; //Adiciona ao total do tempo
+      #ifdef DEBUG
+      printf("Total ms depois triagem e antes atend: %ld\n", *globalVars.total_time_before_atend);
+      fflush(stdout);
+      #endif
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente\n");
+      }
 
-    if(sem_wait(globalVars.semSHM) != 0){
-      perror("Erro ao incrementar semSHM em trataPaciente\n");
+      printf("Doutor [%d] recebeu paciente %s\n", getpid(), paciente.nome);
+
+      //Espera tempo de atendimento
+      usleep(paciente.atend_time*1000); //Converte para milisegundos
+      end_time = time(NULL);
+
+      //Pára o contador de tempo total do paciente
+      struct timespec cont_tempo2;
+      clock_gettime(CLOCK_REALTIME, &cont_tempo2);
+      temp = cont_tempo2.tv_nsec;
+      temp-=paciente.total_time;
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente\n");
+      }
+      (*globalVars.total_time)+=temp; //Adiciona ao total do tempo
+      #ifdef DEBUG
+      printf("Total ms: %ld\n", *globalVars.total_time);
+      fflush(stdout);
+      #endif
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente\n");
+      }
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
+      }
+
+      (*globalVars.n_pacientes_atendidos)++;
+
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente (2)\n");
+      }
+      printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
     }
-    (*globalVars.total_before_atend)+=temp; //Adiciona ao total do tempo
-    if(sem_post(globalVars.semSHM) != 0){
-      perror("Erro ao decrementar semSHM em trataPaciente\n");
-    }
-
-    printf("Doutor [%d] recebeu paciente %s\n", getpid(), paciente.nome);
-
-    //Espera tempo de atendimento
-    usleep(paciente.atend_time*1000); //Converte para milisegundos
-    end_time = time(NULL);
-
-    //Pára o contador de tempo total do paciente
-    struct timeval cont_tempo2;
-    gettimeofday(&cont_tempo2, NULL);
-    temp = cont_tempo2.tv_usec;
-    temp-=paciente.total_time;
-
-    if(sem_wait(globalVars.semSHM) != 0){
-      perror("Erro ao incrementar semSHM em trataPaciente\n");
-    }
-    (*globalVars.total_time)+=temp; //Adiciona ao total do tempo
-    if(sem_post(globalVars.semSHM) != 0){
-      perror("Erro ao decrementar semSHM em trataPaciente\n");
-    }
-
-    if(sem_wait(globalVars.semSHM) != 0){
-      perror("Erro ao incrementar semSHM em trataPaciente (2)\n");
-    }
-
-    (*globalVars.n_pacientes_atendidos)++;
-
-    if(sem_post(globalVars.semSHM) != 0){
-      perror("Erro ao decrementar semSHM em trataPaciente (2)\n");
-    }
-    printf("Doutor [%d] atendeu paciente %s\n", getpid(), paciente.nome);
 
   }
   printf("Doutor [%d] acabou o seu turno\n", getpid());
   //Escreve no log
   sprintf(message, "Doutor [%d] acabou o seu turno.\n",getpid());
+  #ifdef DEBUG
   printf("Message = %s\n", message);
+  #endif
   write_to_log(message);
 }
 
@@ -172,8 +180,8 @@ void* createTempDoctor(){
       perror("Erro ao bloquear mutex_doctor em createTempDoctor\n");
     }
 
-    while(!requestDoctor){
-      pthread_cond_wait(&globalVars.cond_var_doctor, &globalVars.mutex_doctor);
+    while(!globalVars.requestDoctor){
+      pthread_cond_wait(&globalVars.cond_var_doctor, &globalVars.mutex_doctor); //Espera por pthread_cond_signal
     }
 
     //Doutor temporario pedido
@@ -205,7 +213,7 @@ void* createTempDoctor(){
     if(pthread_mutex_lock(&globalVars.mutex_doctor)!=0){
       perror("Erro ao bloquear mutex_doctor em createTempDoctor (2)\n");
     }
-    requestDoctor = 0;
+    globalVars.requestDoctor = 0;
     if(pthread_mutex_unlock(&globalVars.mutex_doctor)!=0){
       perror("Erro ao desbloquear mutex_doctor em createTempDoctor (2)\n");
     }
@@ -247,9 +255,37 @@ void trataPaciente_tempDoctor(){
     else{
       printf("Doutor temporario recebeu paciente %s\n", paciente.nome);
 
+      //Pára o contador do tempo entre a triagem e o atendimento
+      struct timeval cont_tempo;
+      gettimeofday(&cont_tempo, NULL);
+      suseconds_t temp = cont_tempo.tv_usec;
+      temp-=paciente.before_atend;
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente\n");
+      }
+      (*globalVars.total_time_before_atend)+=abs(temp); //Adiciona ao total do tempo
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente\n");
+      }
+
       //Espera tempo de atendimento
       usleep(paciente.atend_time);
       printf("Doutor temporario atendeu paciente %s\n", paciente.nome);
+
+      //Pára o contador de tempo total do paciente
+      struct timeval cont_tempo2;
+      gettimeofday(&cont_tempo2, NULL);
+      temp = cont_tempo2.tv_usec;
+      temp-=paciente.total_time;
+
+      if(sem_wait(globalVars.semSHM) != 0){
+        perror("Erro ao incrementar semSHM em trataPaciente\n");
+      }
+      (*globalVars.total_time)+=abs(temp); //Adiciona ao total do tempo
+      if(sem_post(globalVars.semSHM) != 0){
+        perror("Erro ao decrementar semSHM em trataPaciente\n");
+      }
     }
 
     if(check_exit) break;

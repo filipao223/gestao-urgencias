@@ -20,9 +20,12 @@ Globals globalVars;
 void* triaPaciente(void* t){
   Paciente paciente;
   printf("Thread %ld criada\n", pthread_self());
+  //Escreve no log
   char message[MAX_LOG_MESSAGE];
   sprintf(message, "Thread %ld criada\n", pthread_self());
-  printf("Message= %s\n", message);
+  #ifdef DEBUG
+  printf("Message = %s\n", message);
+  #endif
   write_to_log(message);
 
   while(1){
@@ -31,14 +34,18 @@ void* triaPaciente(void* t){
     }
 
     //Pára o contador do tempo antes da triagem e Calcula o tempo
-    struct timeval cont_tempo;
-    gettimeofday(&cont_tempo, NULL);
-    suseconds_t temp = cont_tempo.tv_usec;
+    struct timespec cont_tempo;
+    clock_gettime(CLOCK_REALTIME, &cont_tempo);
+    int64_t temp = cont_tempo.tv_nsec;
     temp-=paciente.before_triage;
 
     //Coloca o tempo no total de microsegundos
     pthread_mutex_lock(&globalVars.mutex_doctor);
-    (*globalVars.total_before_triage)+=temp;
+    (*globalVars.total_time_before_triage)+=temp;
+    #ifdef DEBUG
+    printf("Total ms antes triagem: %ld\n", *globalVars.total_time_before_triage);
+    fflush(stdout);
+    #endif
     pthread_mutex_unlock(&globalVars.mutex_doctor);
 
     printf("Thread [%ld] recebeu paciente %s\n", pthread_self(), paciente.nome);
@@ -47,9 +54,8 @@ void* triaPaciente(void* t){
     usleep(paciente.triage_time);
 
     //Inicia o contador de tempo entre a triagem e ser atendido
-    struct timeval cont_tempo2;
-    gettimeofday(&cont_tempo2, NULL);
-    paciente.before_atend = cont_tempo2.tv_usec;
+    clock_gettime(CLOCK_REALTIME, &cont_tempo);
+    paciente.before_atend = cont_tempo.tv_nsec;
 
     if(msgsnd(globalVars.mq_id_doctor, &paciente, sizeof(Paciente)-sizeof(long), 0) < 0){
       perror("Erro ao enviar para a queue em triaPaciente\n");

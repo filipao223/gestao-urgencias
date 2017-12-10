@@ -38,7 +38,7 @@ int contPaciente=1;
 
 int main(int argc, char** argv){
   Dados dados;
-  FILE *fileptr = fopen("registo.txt", "r");
+  FILE *fileptr = fopen("config.txt", "r");
 
   signal(SIGINT, cleanup);
   signal(SIGUSR1, show_stats);
@@ -75,8 +75,8 @@ int main(int argc, char** argv){
   //Renomeia as zonas de memoria partilhada
   globalVars.n_pacientes_triados = globalVars.dadosPartilhados;
   globalVars.n_pacientes_atendidos = globalVars.dadosPartilhados+1;
-  globalVars.total_before_triage = globalVars.dadosPartilhados+2;
-  globalVars.total_before_atend = globalVars.dadosPartilhados+3;
+  globalVars.total_time_before_triage = globalVars.dadosPartilhados+2;
+  globalVars.total_time_before_atend = globalVars.dadosPartilhados+3;
   globalVars.total_time = globalVars.dadosPartilhados+4;
 
   //Cria mmf
@@ -138,6 +138,7 @@ int main(int argc, char** argv){
   pthread_cond_init(&globalVars.cond_var_doctor, NULL);
 
   globalVars.checkRequestedDoctor = 0;
+  globalVars.requestDoctor = 0;
 
   //Cria a thread que vai criar processos doutor
   if(pthread_create(&globalVars.thread_doctors, NULL, createDoctors, 0)!=0){
@@ -197,10 +198,10 @@ int main(int argc, char** argv){
         contPaciente++;
 
         //Inicia o contador do tempo antes da triagem e o tempo total
-        struct timeval cont_tempo;
-        gettimeofday(&cont_tempo, NULL);
-        paciente.before_triage = cont_tempo.tv_usec;
-        paciente.total_time = cont_tempo.tv_usec;
+        struct timespec cont_tempo;
+        clock_gettime(CLOCK_REALTIME, &cont_tempo);
+        paciente.before_triage = cont_tempo.tv_nsec;
+        paciente.total_time = cont_tempo.tv_nsec;
 
         //Envia para a message queue
         msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
@@ -225,9 +226,9 @@ int main(int argc, char** argv){
       contPaciente++;
 
       //Inicia o contador do tempo
-      struct timeval cont_tempo;
-      gettimeofday(&cont_tempo, NULL);
-      paciente.before_triage = cont_tempo.tv_usec;
+      struct timespec cont_tempo;
+      clock_gettime(CLOCK_REALTIME, &cont_tempo);
+      paciente.before_triage = cont_tempo.tv_nsec;
 
       //Envia para a message queue
       msgsnd(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), 0);
