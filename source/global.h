@@ -18,7 +18,8 @@
 #include <stdint.h>
 
 #define MAX_LOG_MESSAGE 1024
-#define LOG_SIZE 1048576
+#define MAX_TIME_STRING 40
+#define LOG_SIZE 65536
 #define MEM_SIZE 40
 #define MAX_BUFFER 2000
 #define PIPE_NAME "input_pipe"

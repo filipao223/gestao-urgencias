@@ -69,9 +69,9 @@ void trataPaciente(){
 
   printf("Doutor [%d] começou o seu turno.\n", getpid());
   //Escreve no log
-  char message[MAX_LOG_MESSAGE];
-  sprintf(message, "Doutor [%d] começou o seu turno.\n",getpid());
-  write_to_log(message);
+  char* message_buffer = malloc(MAX_LOG_MESSAGE);
+  sprintf(message_buffer, "Doutor [%d] começou o seu turno.\n",getpid());
+  write_to_log(message_buffer); free(message_buffer);
 
   while((end_time-start_time) < globalVars.SHIFT_LENGTH){
     //Verifica o estado da message queue
@@ -169,11 +169,9 @@ void trataPaciente(){
   }
   printf("Doutor [%d] acabou o seu turno\n", getpid());
   //Escreve no log
-  sprintf(message, "Doutor [%d] acabou o seu turno.\n",getpid());
-  #ifdef DEBUG
-  printf("Message = %s\n", message);
-  #endif
-  write_to_log(message);
+  message_buffer = malloc(MAX_LOG_MESSAGE);
+  sprintf(message_buffer, "Doutor [%d] acabou o seu turno.\n",getpid());
+  write_to_log(message_buffer); free(message_buffer);
 }
 
 void* createTempDoctor(){
@@ -233,9 +231,9 @@ void trataPaciente_tempDoctor(){
 
   printf("Doutor temporario [%d] começou o seu turno\n", getpid());
   //Escreve no log
-  char message[MAX_LOG_MESSAGE];
-  sprintf(message, "Doutor temporario [%d] começou o seu turno.\n",getpid());
-  write_to_log(message);
+  char* message_buffer = malloc(MAX_LOG_MESSAGE);
+  sprintf(message_buffer, "Doutor temporario [%d] começou o seu turno.\n",getpid());
+  write_to_log(message_buffer); free(message_buffer);
 
   while(1){
     //Verifica o estado da message queue
@@ -307,6 +305,7 @@ void trataPaciente_tempDoctor(){
 
   printf("Doutor temporario [%d] acabou o seu turno.\n", getpid());
   //Escreve no log
-  sprintf(message, "Doutor temporario [%d] acabou o seu turno.\n",getpid());
-  write_to_log(message);
+  message_buffer = malloc(MAX_LOG_MESSAGE);
+  sprintf(message_buffer, "Doutor temporario [%d] acabou o seu turno.\n",getpid());
+  write_to_log(message_buffer); free(message_buffer);
 }

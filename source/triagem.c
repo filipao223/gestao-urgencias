@@ -25,12 +25,9 @@ void* triaPaciente(void* t){
   Paciente paciente;
   printf("Thread %ld criada\n", pthread_self());
   //Escreve no log
-  char message[MAX_LOG_MESSAGE];
-  sprintf(message, "Thread %ld criada\n", pthread_self());
-  #ifdef DEBUG
-  printf("Message = %s\n", message);
-  #endif
-  write_to_log(message);
+  char *message_buffer = malloc(MAX_LOG_MESSAGE);
+  sprintf(message_buffer, "Thread %ld criada\n", pthread_self());
+  write_to_log(message_buffer); free(message_buffer);
 
   while(1){
     if(msgrcv(globalVars.mq_id_thread, &paciente, sizeof(Paciente)-sizeof(long), MTYPE, 0) < 0){

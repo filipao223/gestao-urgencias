@@ -57,8 +57,17 @@ void cleanup(int signum){
   shmdt(&globalVars.dadosPartilhados);
   shmctl(globalVars.shmid, IPC_RMID, NULL);
 
-  //Sincroniza o mmaped file no disco e faz unmap
+  //Sincroniza o mmaped file no disco
   msync(globalVars.log_ptr, LOG_SIZE, MS_SYNC);
+
+  //Converte o ficheiro bin para um ficheiro txt
+  FILE* file = fopen("log.txt", "w");
+  for(int i=0; i<globalVars.ptr_pos; i++){
+    fprintf(file, "%c", globalVars.log_ptr[i]);
+  }
+  fclose(file);
+
+  //Unmap da memoria
   munmap(globalVars.log_ptr, getpagesize());
   close(globalVars.log_fd);
 

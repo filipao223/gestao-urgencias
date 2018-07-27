@@ -54,12 +54,25 @@ int main(int argc, char** argv){
     }
   }
 
+  //Cria mmf
+  globalVars.log_fd = open("log.bin", O_RDWR|O_CREAT, 0600);
+
+  lseek(globalVars.log_fd, LOG_SIZE-1, SEEK_SET);
+  write(globalVars.log_fd, "", 1);
+
+  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_WRITE|PROT_READ, MAP_SHARED, globalVars.log_fd, 0);
+  globalVars.ptr_pos = 0;
+
+  write_to_log_no_sems("Ficheiro mapeado em memoria criado\n");
+
   //Lê dados do ficheiro
   dados = readFile(fileptr);
   globalVars.TRIAGE=dados.triage;
   globalVars.DOCTORS=dados.doctors;
   globalVars.SHIFT_LENGTH=dados.shift_length;
   globalVars.MQ_MAX=dados.mq_max;
+
+  write_to_log_no_sems("Dados lidos do ficheiro\n");
 
   globalVars.thread_triage = malloc(sizeof(pthread_t)*globalVars.TRIAGE);
   long ids[globalVars.TRIAGE];
@@ -71,10 +84,12 @@ int main(int argc, char** argv){
     perror("Erro ao criar segmento de memoria partilhada\n");
     cleanup(2);
   }
+  write_to_log_no_sems("Memoria partilhada criada\n");
   if((globalVars.dadosPartilhados = shmat(globalVars.shmid, NULL, 0)) < 0){
     perror("Erro ao fazer attach da memoria partilhada\n");
     cleanup(2);
   }
+  write_to_log_no_sems("Memoria partilhada attached\n");
 
   //Renomeia as zonas de memoria partilhada
   globalVars.n_pacientes_triados = globalVars.dadosPartilhados;
@@ -83,28 +98,19 @@ int main(int argc, char** argv){
   globalVars.total_time_before_atend = globalVars.dadosPartilhados+3;
   globalVars.total_time = globalVars.dadosPartilhados+4;
 
-  //Cria mmf
-  globalVars.log_fd = open("log.txt", O_RDWR|O_CREAT, 0600);
-
-  lseek(globalVars.log_fd, LOG_SIZE-1, SEEK_SET);
-  write(globalVars.log_fd, "", 1);
-
-  globalVars.log_ptr = mmap(0, LOG_SIZE, PROT_WRITE|PROT_READ, MAP_SHARED, globalVars.log_fd, 0);
-  globalVars.ptr_pos = 0;
+  write_to_log_no_sems("Zonas de memoria renomeadas\n");
 
   //Cria e abre named pipe
-  #ifdef DEBUG
-  printf("A criar e abrir FIFO\n");
-  fflush(stdout);
-  #endif
   if(mkfifo(PIPE_NAME, O_CREAT|O_EXCL|0700) < 0){
     perror("Erro ao criar named pipe\n");
     cleanup(2);
   }
+  write_to_log_no_sems("Named pipe criado\n");
   if((globalVars.named_fd = open(PIPE_NAME, O_RDONLY)) < 0){
     perror("Erro ao abrir named pipe\n");
     cleanup(2);
   }
+  write_to_log_no_sems("Named pipe aberto\n");
 
   //Cria as filas de mensagens
   if((globalVars.mq_id_thread = msgget(IPC_PRIVATE, O_CREAT|0700)) < 0){
@@ -117,41 +123,40 @@ int main(int argc, char** argv){
     cleanup(2);
   }
 
+  write_to_log_no_sems("Filas de mensagens criadas\n");
+
   //Inicializa dados partilhados
   globalVars.numDadosPartilhados = 5;
   for(int i=0; i<globalVars.numDadosPartilhados; i++){
     globalVars.dadosPartilhados[i] = 0;
   }
+  write_to_log_no_sems("Dados partilhados inicializados\n");
 
   sem_unlink("SemLog");
   sem_unlink("SemMQ");
   sem_unlink("SemSHM");
 
   //Inicializa semaphore
-  #ifdef DEBUG
-  printf("A inicializar semaforos\n");
-  fflush(stdout);
-  #endif
   if((globalVars.semLog = sem_open("SemLog", O_CREAT|O_EXCL, 0600, 1)) == SEM_FAILED){
     perror("Erro ao Inicializar SemLog\n");
     cleanup(SIGINT);
   }
+  write_to_log_no_sems("SemLog inicializado\n");
   if((globalVars.semMQ = sem_open("SemMQ", O_CREAT, 0600, 1)) == SEM_FAILED){
     perror("Erro ao inicializar SemMQ\n");
     cleanup(SIGINT);
   }
+  write_to_log_no_sems("SemMQ inicializado\n");
   if((globalVars.semSHM = sem_open("SemSHM", O_CREAT, 0600, 1)) == SEM_FAILED){
     perror("Erro ao inicializar SemSHM\n");
     cleanup(SIGINT);
   }
+  write_to_log_no_sems("SemSHM inicializado\n");
 
   //Inicializa variaveis de condiçao e mutexes
-  #ifdef DEBUG
-  printf("A inicializar variaveis de condiçao e mutexes\n");
-  fflush(stdout);
-  #endif
   pthread_mutex_init(&globalVars.mutex_doctor, NULL);
   pthread_cond_init(&globalVars.cond_var_doctor, NULL);
+  write_to_log("Variaveis de condiçao e mutexes inicializados\n");
 
   globalVars.checkRequestedDoctor = 0;
   globalVars.requestDoctor = 0;
@@ -161,12 +166,14 @@ int main(int argc, char** argv){
     perror("Erro ao criar thread thread_doctors\n");
     cleanup(2);
   }
+  write_to_log("Thread thread_doctors criada\n");
 
   //Thread que vai criar o doutor temporario, se for preciso
   if(pthread_create(&globalVars.temp_doctor_thread, 0, createTempDoctor, NULL)!=0){
     perror("Erro ao criar thread temp_doctor_thread\n");
     cleanup(2);
   }
+  write_to_log("Thread temp_doctor_thread criada\n");
 
   globalVars.newTriage = -1;
 
@@ -176,6 +183,7 @@ int main(int argc, char** argv){
   for(int i=0; i<globalVars.TRIAGE; i++){
     if(pthread_create(&globalVars.thread_triage[i], NULL, triaPaciente, &ids[i]) != 0) printf("Erro ao criar thread!\n");
   }
+  write_to_log("Threads de triagem inicializados\n");
 
   //Recebe os pacientes pelo named pipe
   while(1){
